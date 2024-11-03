@@ -1,4 +1,4 @@
-# Video Projects
+# VideoToolsHub
 
 This repository contains two Python-based video tools: a Video Playlist Player and a Video Downloader.
 
