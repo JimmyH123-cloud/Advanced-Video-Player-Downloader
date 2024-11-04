@@ -30,9 +30,9 @@ def download_video(url, save_path):
         print(f"An error occurred: {str(e)}")
 
 def open_file_dialog():
-    # ask path and save to variable
+    # ask path (any path you want) and save to variable 
     folder = filedialog.askdirectory()
-    # folder = "C:/Users/...
+    
     if folder:
         print(f"Selected folder: {folder}")
     return folder
@@ -60,7 +60,6 @@ if __name__ == "__main__":
         if video_url.lower() == 'q':
             break
             
-        
         save_dir = open_file_dialog()
         
         if save_dir:
