@@ -1,86 +1,101 @@
-# VideoToolsHub
+# VideoToolsHub 🎥
 
-This repository contains two Python-based video tools: a Video Playlist Player and a Video Downloader.
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
+[![Python](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
 
-## 1. Video Playlist Player
+A powerful suite of Python-based video tools featuring an advanced Video Playlist Player and Multi-Platform Video Downloader. Perfect for managing and downloading your video content with ease.
 
-A Python-based video player that enables users to play videos from a folder in sequential or shuffled order, with controls for playback, volume, speed adjustment, and tracking of watched videos.
+## 🚀 Key Features
 
-### 1.1 Features
+### Video Playlist Player
+- 🎮 **Smart Playback Controls**: Play, pause, and navigate videos effortlessly
+- ⚡ **Advanced Speed Control**: Adjust playback speed from 0.5x to 5.0x
+- 🔄 **Intelligent Track Management**: Auto-skip watched videos with reset option
+- 🎲 **Random Playback**: Built-in shuffle mode
+- 🔊 **Enhanced Audio**: Volume control up to 125%
+- ⏱️ **Progress Tracking**: Interactive seek bar with real-time timer
+- ⌨️ **Keyboard Shortcuts**: Streamlined playback control
 
-- **Basic Playback Controls**: Play, pause, skip forward/backward, play previous/next video.
-- **Playback Speed Adjustment**: Set playback speed from 0.5x to 5.0x with shortcuts.
-- **Watched Videos Tracking**: Automatically skips watched videos, with a reset option.
-- **Shuffle Mode**: Toggle shuffle mode for random playback order.
-- **Volume Control**: Adjust volume from 0% to 125%.
-- **Seek Bar and Timer**: Shows current position and allows seeking.
-- **Keyboard Shortcuts**: Quick access to playback and speed controls.
-- **Supported Formats**: Primarily for `.mp4` files.
+### Video Downloader
+- 🌐 **Universal Platform Support**: Download from YouTube, Vimeo, TikTok, Twitch VODs
+- 📊 **Quality Optimization**: Automatic best quality selection
+- ⚡ **Parallel Processing**: Faster downloads through concurrent fragments
+- 🎛️ **Customizable Settings**: Configure playlists, subtitles, and proxy options
 
-### 1.2 Requirements
+## 📋 Requirements
 
-- Python 3.x
-- `python-vlc`: `pip install python-vlc`
-- VLC media player installed on your system.
-- `tkinter` (usually included with Python).
+### Video Playlist Player
+```bash
+# Core Requirements
+python 3.x
+python-vlc
+VLC Media Player
+tkinter (included with Python)
+```
 
-### 1.3 Installation
+### Video Downloader
+```bash
+# Core Requirements
+python 3.x
+yt-dlp
+tkinter (included with Python)
+```
 
-1. Clone this repository: `git clone https://github.com/jimmyH123-cloud/VideoPlaylistPlayer.git`
-2. Install dependencies: `pip install python-vlc`
-3. Run: `python video_playlist_player.py`
+## 🛠️ Installation
 
-### 1.4 Usage
+### Video Playlist Player
+```bash
+# Clone the repository
+git clone https://github.com/jimmyH123-cloud/VideoPlaylistPlayer.git
 
-1. Click **Select Folder** to choose a folder with `.mp4` videos.
-2. Use buttons for play, pause, previous, and next.
-3. Adjust playback speed with the slider or arrow keys.
-4. Toggle **Shuffle** for random playback.
-5. Use **RTWV** to reset watched videos tracking.
-6. Adjust volume and seek using sliders.
+# Install dependencies
+pip install python-vlc
 
-### 1.5 Keyboard Shortcuts
+# Launch the application
+python video_playlist_player.py
+```
 
-- **Right Arrow**: Skip forward 15 seconds.
-- **Left Arrow**: Skip backward 15 seconds.
-- **Up Arrow**: Increase playback speed by 0.1.
-- **Down Arrow**: Decrease playback speed by 0.1.
+### Video Downloader
+```bash
+# Clone the repository
+git clone https://github.com/jimmyH123-cloud/VideoDownloader.git
 
-### 1.6 Possible Bugs
+# Install dependencies
+pip install yt-dlp
 
-- If all videos in a playlist have been watched, you may need to press **RTWV** (Reset Tracked Watched Videos) and then press **Next** or **Play/Pause** to restart playback.
+# Launch the application
+python video_downloader.py
+```
 
-## 2. Video Downloader with yt-dlp
+## 📖 Usage Guide
 
-A Python script for downloading videos from various platforms like YouTube, Vimeo, TikTok, Twitch VOD (may not work in some circumstances), and others using `yt-dlp`.
+### Video Playlist Player
+1. Launch the application and click **Select Folder**
+2. Choose a directory containing `.mp4` files
+3. Use the intuitive controls for playback
+4. Adjust speed using slider or keyboard shortcuts
+5. Toggle shuffle mode for random playback
+6. Reset watched videos with **RTWV** button
 
-### 2.1 Features
+#### Keyboard Shortcuts
+| Key | Action |
+|-----|--------|
+| → | Skip forward 15s |
+| ← | Skip backward 15s |
+| ↑ | Increase speed 0.1x |
+| ↓ | Decrease speed 0.1x |
 
-- **Multi-Platform Support**: Works with YouTube, Vimeo, TikTok, Twitch VOD, etc.
-- **User-Friendly GUI**: Easy directory selection with `tkinter`.
-- **High-Quality Downloads**: Best available quality selection.
-- **Concurrent Downloads**: Faster downloads with increased fragments.
-- **Customizable Options**: Configure playlists, subtitles, proxies.
+### Video Downloader
+1. Launch the application
+2. Paste your video URL
+3. Select download location
+4. Wait for completion
 
-### 2.2 Requirements
+## 🐛 Known Issues
+- After watching all videos, use **RTWV** (Reset Tracked Watched Videos) and press **Next** or **Play/Pause** to restart playback
 
-- Python 3.x
-- `yt-dlp`: `pip install yt-dlp`
-- `tkinter` (included with Python).
+## 📄 License
+This project is MIT licensed - see the [LICENSE](LICENSE) file for details
 
-### 2.3 Installation
-
-1. Clone this repository: `git clone https://github.com/jimmyH123-cloud/VideoDownloader.git`
-2. Install dependencies: `pip install yt-dlp`
-3. Run: `python video_downloader.py`
-
-### 2.4 Usage
-
-1. Run the script.
-2. Enter the video URL from a supported platform.
-3. Select the save location.
-4. Wait for the download to complete.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+## 📬 Contact
+Project Link: [https://github.com/jimmyH123-cloud/VideoToolsHub](https://github.com/jimmyH123-cloud/VideoToolsHub)
