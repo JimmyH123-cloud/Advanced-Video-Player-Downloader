@@ -46,24 +46,24 @@ class VideoPlayer:
         # Set the desired aspect ratio for the video
         self.video_frame.bind("<Configure>", self.on_frame_resize)
         
-        # <Added> add a bar to move the duration of the video
+        # add a bar to move the duration of the video
         self.duration_var = tk.DoubleVar()
         self.duration_slider = ttk.Scale(
             main_container, from_=0, to=100, orient=tk.HORIZONTAL,
             variable=self.duration_var, command=self.on_duration_change
         )
-        
         self.duration_slider.pack(fill=tk.X, padx=5, pady=5)
-        
+
         
         # Timer label
         self.timer_label = ttk.Label(main_container, text="00:00 / 00:00")
         self.timer_label.pack(pady=5)
-        
+
         
         # Create control button frame
         controls = ttk.Frame(main_container)
         controls.pack(fill=tk.X, pady=4)
+
         
         # Control buttons
         ttk.Button(controls, text="Select Folder", command=self.load_folder).pack(side=tk.LEFT, padx=4)
@@ -71,9 +71,9 @@ class VideoPlayer:
         self.play_button = ttk.Button(controls, text="Play", command=self.toggle_play, width=5)
         self.play_button.pack(side=tk.LEFT, padx=2,pady=2)
         ttk.Button(controls, text="Next", command=self.play_next, width=5).pack(side=tk.LEFT, padx=2,pady=2)
-        
-        
-        # New skip buttons
+
+
+        # Skip buttons
         ttk.Button(controls, text="Skip Back 15s", command=self.skip_back).pack(side=tk.LEFT, padx=4)
         ttk.Button(controls, text="Skip Forward 15s", command=self.skip_forward).pack(side=tk.LEFT, padx=4)
 
@@ -113,7 +113,7 @@ class VideoPlayer:
                         variable=self.speed_var, command=self.set_speed)
         speed_slider.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
 
-        # Add a label to display the current speed (optional)
+        # Add a label to display the current speed 
         self.speed_label = ttk.Label(controls, text="Speed: 1.0x")
         self.speed_label.pack(side=tk.LEFT)
         
@@ -151,7 +151,7 @@ class VideoPlayer:
             # Set the window ID to render VLC's video output
             if os.name == 'nt':  # Windows
                 self.player.set_hwnd(self.video_frame.winfo_id())
-            else:  # Linux/Mac
+            else:  # Set Linux/Mac ID to render VLC's video output
                 self.player.set_xwindow(self.video_frame.winfo_id())
             
             # Start playback
@@ -164,8 +164,6 @@ class VideoPlayer:
             self.playlist_box.selection_set(self.current_index)
             self.playlist_box.see(self.current_index)
             
-            
-            # <Added>
             # Mark the current video as watched
             self.watched_videos.add(self.current_index)
             
@@ -223,7 +221,7 @@ class VideoPlayer:
         self.player.stop()
         self.root.destroy()
     
-    # <Added>
+
     def play_next(self):
         """Plays the next unwatched video, or stops if all are watched."""
         if self.playlist:
@@ -309,19 +307,20 @@ class VideoPlayer:
         self.root.bind("<Up>", lambda event: self.accélération_lecture())
         self.root.bind("<Down>", lambda event: self.décélération_lecture())
 
-    
     def skip_forward(self, event=None):
         """Skip forward by 15 seconds."""
         if self.player.is_playing():
             current_time = self.player.get_time()  # Get current playback time in milliseconds
             self.player.set_time(min(current_time + 15000, self.player.get_length()))  # Skip forward 15 seconds
 
+    # As the func_name imply
     def skip_back(self, event=None):
         """Skip backward by 15 seconds."""
         if self.player.is_playing():
             current_time = self.player.get_time()  # Get current playback time in milliseconds
             self.player.set_time(max(current_time - 15000, 0))  # Skip backward 15 seconds
-    
+
+    # As the func_name imply
     def set_speed(self, value):
         """Set the playback speed of the media player."""
         speed = self.speed_var.get()
