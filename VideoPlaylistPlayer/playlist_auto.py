@@ -84,7 +84,7 @@ class VideoPlayer:
 
 
         # Shuffle toggle button
-        self.shuffle_button = ttk.Button(controls, text="Shuffle Off", command=self.toggle_shuffle)
+        self.shuffle_button = ttk.Button(controls, text="Shuffle On", command=self.toggle_shuffle)
         self.shuffle_button.pack(side=tk.LEFT, padx=4)
         
         # Volume control slider
@@ -139,6 +139,7 @@ class VideoPlayer:
             
             # Start playing the first video in the playlist if any
             if self.playlist:
+                self.toggle_shuffle()
                 self.reset_watched_videos()
                 self.current_index = 0
                 self.play_current()
@@ -215,7 +216,7 @@ class VideoPlayer:
     def toggle_shuffle(self):
         # Toggle shuffle mode on or off
         self.is_shuffle = not self.is_shuffle
-        self.shuffle_button.config(text="Shuffle On" if self.is_shuffle else "Shuffle Off")
+        self.shuffle_button.config(text="Shuffle Off" if self.is_shuffle else "Shuffle On")
     
     def on_closing(self):
         # Stop playback and close the application
