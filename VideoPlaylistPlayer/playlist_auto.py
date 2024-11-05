@@ -139,6 +139,7 @@ class VideoPlayer:
             
             # Start playing the first video in the playlist if any
             if self.playlist:
+                self.reset_watched_videos()
                 self.current_index = 0
                 self.play_current()
     
