@@ -93,7 +93,7 @@ python video_downloader.py
 
 ## 🐛 Known Issues
 - After watching all videos, use **RTWV** (Reset Tracked Watched Videos) and press **Next** or **Play/Pause** to restart playback
-- (fixed) After watching a video and decided to select another folder, use **RTWV** to reset since the tracked watched video will keep track of your previous playlist and press **Next** or **Play/Pause** to start the playback  
+- **Video Downloader** may not always download the best qualities for some videos.  
 
 ## 📄 License
 This project is MIT licensed - see the [LICENSE](LICENSE) file for details
