@@ -1,335 +1,472 @@
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 import os
 import vlc
 import random
+import traceback
 from pathlib import Path
+import cv2
+from PIL import Image, ImageTk, ImageDraw, ImageFont
+from functools import lru_cache
+import ast
+
 
 
 class VideoPlayer:
+    
+    PREVIEW_WIDTH = 200 # Preview video Width
+    PREVIEW_HEIGHT = 120 # Preview video Height
+    SKIP_TIME = 15000 # Set the skip time to 15s
+    MAX_PLAYBACK_SPEED = 4.0
+    
     def __init__(self, root):
         # Initialize the main window
         self.root = root
         self.root.title("Video Playlist Player")
-        self.root.geometry("900x650")
+        self.root.geometry("900x980")
+        
+        instance_args = [
+            '--quiet', # Reduce logging
+            '--no-disable-screensaver',
+            '--no-video-title-show',
+        ]
         
         # Initialize VLC instance and media player
-        self.instance = vlc.Instance()
+        self.instance = vlc.Instance(instance_args)
         self.player = self.instance.media_player_new()
-        
+
         # Initialize playlist attributes
-        self.playlist = []  # List to store video file paths
-        self.current_index = 0  # Index of the current video in playlist
-        self.is_playing = False  # Flag to track play/pause state
-        self.is_shuffle = False  # Flag to enable/disable shuffle mode
-        self.playback_speed = 1.0 # Default playback Speed
+        self.playlist = []
         
-        # keep tracked of watched videos
+        self.is_playing = False
+        self.is_shuffle = False
+        self.playback_speed = 1.0
+        
+        
         self.watched_videos = set()
         
-
+        
+        self.preview_image_label = ttk.Label(self.root)
+        self.preview_image_label.place_forget()  # Initially hidden
+        
         # Setup the user interface
         self.setup_ui()
-        
-        # Bind keys
         self.bind_keys()
-        
+
+        # Bind close window event to stop playback
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
     def setup_ui(self):
+        
+        # style = ttk.Style()
+        # style.configure('CustomFrame.TFrame', 
+        #                 background='white', 
+        #                 foreground='black', 
+        #                 borderwidth=1, 
+        #                 relief='solid')
+        
         # Create main container frame
-        main_container = ttk.Frame(self.root)
-        main_container.pack(fill=tk.BOTH, expand=True, padx=7, pady=4)
+        self.main_container = ttk.Frame(self.root)
+        self.main_container.pack(fill=tk.BOTH, expand=True, padx=7, pady=4)
         
+
         # Create video display frame
-        self.video_frame = ttk.Frame(main_container, borderwidth=2, relief='solid')
-        self.video_frame.pack(fill=tk.BOTH, expand=True, pady=2)
-        
+        self.video_frame = ttk.Frame(self.main_container, borderwidth=2, relief='solid')
+        self.video_frame.pack(fill=tk.BOTH, expand=True)
+
         # Set the desired aspect ratio for the video
-        self.video_frame.bind("<Configure>", self.on_frame_resize)
-        
-        # add a bar to move the duration of the video
+        self.video_frame.pack_propagate(False)
+        self.video_frame.config(width=900, height=700)
+
+        # Create a container for preview and slider
+        preview_container = ttk.Frame(self.main_container)
+        preview_container.pack(fill=tk.X, padx=5, pady=5)
+
+        # Duration slider BELOW the preview
         self.duration_var = tk.DoubleVar()
         self.duration_slider = ttk.Scale(
-            main_container, from_=0, to=100, orient=tk.HORIZONTAL,
+            preview_container, from_=0, to=100, orient=tk.HORIZONTAL,
             variable=self.duration_var, command=self.on_duration_change
         )
-        self.duration_slider.pack(fill=tk.X, padx=5, pady=5)
+        self.duration_slider.pack(side=tk.TOP, fill=tk.X, expand=True)
 
-        
+        # Modify duration slider to show preview
+        self.duration_slider.bind('<Motion>', self.show_preview)
+        self.duration_slider.bind('<Leave>', self.hide_preview)
+
         # Timer label
-        self.timer_label = ttk.Label(main_container, text="00:00 / 00:00")
+        self.timer_label = ttk.Label(self.main_container, text="00:00 / 00:00")
         self.timer_label.pack(pady=5)
 
-        
-        # Create control button frame
-        controls = ttk.Frame(main_container)
+        # Control buttons
+        controls = ttk.Frame(self.main_container)
         controls.pack(fill=tk.X, pady=4)
 
-        
-        # Control buttons
         ttk.Button(controls, text="Select Folder", command=self.load_folder).pack(side=tk.LEFT, padx=4)
-        ttk.Button(controls, text="Previous", command=self.play_previous, width=7.5).pack(side=tk.LEFT, padx=2,pady=2)
+        ttk.Button(controls, text="Previous", command=self.play_previous, width=7.5).pack(side=tk.LEFT, padx=2, pady=2)
         self.play_button = ttk.Button(controls, text="Play", command=self.toggle_play, width=5)
-        self.play_button.pack(side=tk.LEFT, padx=2,pady=2)
-        ttk.Button(controls, text="Next", command=self.play_next, width=5).pack(side=tk.LEFT, padx=2,pady=2)
+        self.play_button.pack(side=tk.LEFT, padx=2, pady=2)
+        ttk.Button(controls, text="Next", command=self.play_next, width=5).pack(side=tk.LEFT, padx=2, pady=2)
 
+        ttk.Button(controls, text=f"<-- {self.SKIP_TIME * 0.001:.0f}s", command=self.skip_back, width=8).pack(side=tk.LEFT)
+        ttk.Button(controls, text=f"--> {self.SKIP_TIME * 0.001:.0f}s", command=self.skip_forward, width=8).pack(side=tk.LEFT)
 
-        # Skip buttons
-        ttk.Button(controls, text="Skip Back 15s", command=self.skip_back).pack(side=tk.LEFT, padx=4)
-        ttk.Button(controls, text="Skip Forward 15s", command=self.skip_forward).pack(side=tk.LEFT, padx=4)
+        ttk.Button(controls, text="RTWV", command=self.reset_watched_videos, width=6.5).pack(side=tk.LEFT, padx=2, pady=2)
 
-        
-        # "RTWV" initial for Reset Traked Watched Videos
-        # you can change the initial if you want
-        ttk.Button(controls, text="RTWV", command=self.reset_watched_videos, width=6.5).pack(side=tk.LEFT, padx=2,pady=2)
-
-
-        # Shuffle toggle button
         self.shuffle_button = ttk.Button(controls, text="Shuffle On", command=self.toggle_shuffle)
         self.shuffle_button.pack(side=tk.LEFT, padx=4)
-        
-        # Volume control slider
-        self.volume_var = tk.IntVar(value=100)
-        volume_slider = ttk.Scale(controls, from_=0, to=125, orient=tk.HORIZONTAL,
+
+        self.volume_var = tk.IntVar(value=50)
+        volume_slider = ttk.Scale(controls, from_=0, to=100, orient=tk.HORIZONTAL,
                                   variable=self.volume_var, command=self.set_volume)
         volume_slider.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
-        
+
         # Playlist display frame
-        playlist_frame = ttk.Frame(main_container)
+        playlist_frame = ttk.Frame(self.main_container)
         playlist_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-        
-        # Playlist listbox to show videos
+
         self.playlist_box = tk.Listbox(playlist_frame, selectmode=tk.SINGLE)
         self.playlist_box.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-        
-        # Scrollbar for playlist
-        scrollbar = ttk.Scrollbar(playlist_frame, orient=tk.VERTICAL, 
-                                  command=self.playlist_box.yview)
+
+        scrollbar = ttk.Scrollbar(playlist_frame, orient=tk.VERTICAL, command=self.playlist_box.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.playlist_box.config(yscrollcommand=scrollbar.set)
-        
-        # Set the Décélération/accéleration
+
         self.speed_var = tk.DoubleVar(value=1.0)
         speed_slider = ttk.Scale(controls, from_=0.5, to=2.0, orient=tk.HORIZONTAL,
                         variable=self.speed_var, command=self.set_speed)
         speed_slider.pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
 
-        # Add a label to display the current speed 
         self.speed_label = ttk.Label(controls, text="Speed: 1.0x")
         self.speed_label.pack(side=tk.LEFT)
-        
-        # Bind double-click on playlist items to play the selected video
+
         self.playlist_box.bind('<Double-Button-1>', self.play_selected)
+        self.duration_slider.bind("<Button-1>", self.duration_bar_click)
         
-        # Bind close window event to stop playback
-        # Remove the container if <exit> is used
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
+        menubar = tk.Menu(self.root) 
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Load Watched Videos", command=self.load_tracked)
+        filemenu.add_command(label="Save Watched Videos", command=self.save_watched_videos)
+        menubar.add_cascade(label="File", menu=filemenu)
+        self.root.config(menu=menubar) 
+
+        # print("Video frame created")
+        # print("Resize event bound")
+        # print(f"Preview container packed with dimensions: {preview_container.winfo_width()}x{preview_container.winfo_height()}")
+        # print(f"Video frame initial size: {self.video_frame.winfo_width()}x{self.video_frame.winfo_height()}")
+
     def load_folder(self):
-        # Open folder selection dialog
         folder = filedialog.askdirectory()
         if folder:
-            # Clear current playlist and listbox
             self.playlist.clear()
             self.playlist_box.delete(0, tk.END)
             
-            # Load all MP4 files from the selected folder
             for file in Path(folder).glob("*.mp4"):
                 self.playlist.append(str(file))
                 self.playlist_box.insert(tk.END, file.name)
             
-            # Start playing the first video in the playlist if any
+            
             if self.playlist:
-                self.toggle_shuffle()
-                self.reset_watched_videos()
+                self.player.audio_set_volume(self.volume_var.get())
                 self.current_index = 0
+                self.watched_videos.clear()
                 self.play_current()
-    
+
     def play_current(self):
-        # Play the video at the current index in the playlist
+        if not (0 <= self.current_index < len(self.playlist)):
+            return
+        
         if 0 <= self.current_index < len(self.playlist):
             media = self.instance.media_new(self.playlist[self.current_index])
             self.player.set_media(media)
             
-            # Set the window ID to render VLC's video output
-            if os.name == 'nt':  # Windows
+            if os.name == 'nt':
                 self.player.set_hwnd(self.video_frame.winfo_id())
-            else:  # Set Linux/Mac ID to render VLC's video output
+            else:
                 self.player.set_xwindow(self.video_frame.winfo_id())
             
-            # Start playback
             self.player.play()
             self.is_playing = True
             self.play_button.config(text="Pause")
             
-            # Highlight the currently playing video in the playlist
             self.playlist_box.selection_clear(0, tk.END)
             self.playlist_box.selection_set(self.current_index)
             self.playlist_box.see(self.current_index)
-            
-            # Mark the current video as watched
             self.watched_videos.add(self.current_index)
-            
-            # Set up end-of-video check to play the next video
             self.update_duration_slider()
-    
-    def check_end(self):
-        # Check if the video has ended and play the next one if it has
-        if self.player.get_state() == vlc.State.Ended:
-            self.play_next()
-        elif self.is_playing:
-            # Continue checking every second if video is still playing
-            self.root.after(1000, self.check_end)
-    
+            
+            print(f"""
+            {"=" * 55}
+            || {'Current Video Watching:':^49} ||
+            || {os.path.basename(self.playlist[self.current_index]):^49} ||
+            {"=" * 55}
+            """)
+        
+        
     def toggle_play(self):
-        # Toggle between play and pause
         if self.player.is_playing():
             self.player.pause()
             self.play_button.config(text="Play")
-            self.is_playing = False
+            print(f"""\nset of self.watched_video:|-> {self.watched_videos} <-| \nand title watched:  {[os.path.basename(self.playlist[i]) for i in self.watched_videos]}""")
+            
         else:
             self.player.play()
             self.play_button.config(text="Pause")
-            self.is_playing = True
-            # Check video end when playback resumes
-            self.update_duration_slider() 
-    
+            self.is_playing = self.player.is_playing()
+            self.update_duration_slider()
+        
+        
+
     def play_previous(self):
-        # Play the previous video in the playlist or a random one if shuffle is enabled
-        if self.playlist:
-            if self.is_shuffle:
-                self.current_index = random.randint(0, len(self.playlist) - 1)
-            else:
-                self.current_index = (self.current_index - 1) % len(self.playlist)
+        if self.playlist and self.previous_index != self.current_index:
+            self.watched_videos.discard(self.current_index)
+            self.current_index = self.previous_index
             self.play_current()
-    
+
     def play_selected(self, event=None):
-        # Play the video selected in the playlist listbox
         selection = self.playlist_box.curselection()
         if selection:
             self.current_index = selection[0]
             self.play_current()
     
+    def duration_bar_click(self, event):
+        "Handle clicks on the duration bar."
+        if self.player.get_length() > 0:
+            slider_width = self.duration_slider.winfo_width()
+            if slider_width > 0:
+                total_duration = self.player.get_length() / 1000
+                mouse_relative_pos = event.x / slider_width
+                click_time = int(mouse_relative_pos * total_duration)
+                self.player.set_time(click_time * 1000) 
+                self.update_duration_slider() 
+            
     def set_volume(self, value):
-        # Set the volume of the media player
         self.player.audio_set_volume(self.volume_var.get())
-    
+
     def toggle_shuffle(self):
-        # Toggle shuffle mode on or off
         self.is_shuffle = not self.is_shuffle
         self.shuffle_button.config(text="Shuffle Off" if self.is_shuffle else "Shuffle On")
-    
+        self.watched_videos.clear()
+
     def on_closing(self):
-        # Stop playback and close the application
         self.player.stop()
         self.root.destroy()
-    
 
     def play_next(self):
-        """Plays the next unwatched video, or stops if all are watched."""
-        if self.playlist:
-            # Loop until we find an unwatched video or have cycled through all
-            original_index = self.current_index
-            while True:
-                # Determine the next index based on shuffle or sequential order
-                if self.is_shuffle:
+        if not self.playlist:
+            return
+        
+        original_index = self.current_index
+        self.previous_index = self.current_index
+        
+        while True:
+            if self.is_shuffle:
+                while True:
                     self.current_index = random.randint(0, len(self.playlist) - 1)
-                else:
-                    self.current_index = (self.current_index + 1) % len(self.playlist)
-                
-                # Check if the video is unwatched or we are back to the start
-                if self.current_index not in self.watched_videos or self.current_index == original_index:
-                    break
+                    if not self.current_index in self.watched_videos or len(self.watched_videos) == len(self.playlist):
+                        break
+            else:
+                self.current_index = (self.current_index + 1) % len(self.playlist)
             
-            # Play if we found an unwatched video; otherwise, stop playback
-            if self.current_index not in self.watched_videos:
-                self.play_current()
-            
-    
+        
+            if self.current_index not in self.watched_videos or original_index == self.current_index or len(self.watched_videos) == len(self.playlist):
+                break
+        
+        if self.current_index not in self.watched_videos:
+            self.play_current()
+
     def reset_watched_videos(self):
-        """Clears the watched video set, allowing all videos to be played again."""
         self.watched_videos.clear()
+        print(f"{"The Watched Videos Tracker has been reset!".upper()} \n{"you can proceed.".upper()}")
     
+   
     def on_duration_change(self, value):
-        # Seek to position when slider is moved
-        if self.is_playing:
+        if self.is_playing and self.player.get_length() > 0:
             try:
-                position = int(float(value)) * 1000  # Convert to milliseconds
+                position = int(float(value)) * 1000
                 self.player.set_time(position)
             except Exception as e:
                 print(f"Error seeking: {e}")
-                
+
     def update_duration_slider(self):
-        if self.is_playing:
-            try:
-                length = self.player.get_length() // 1000  # Video length in seconds
-                position = self.player.get_time() // 1000  # Current position in seconds
-                
-                if length > 0:
-                    # Update slider
-                    self.duration_slider.config(to=length)
-                    self.duration_var.set(position)
-                    
-                    # Update timer label
-                    self.update_timer_label(position, length)
-                
-                if self.player.get_state() == vlc.State.Ended:
-                    self.play_next()
-                else:
-                    # Continue updating
-                    self.root.after(1000, self.update_duration_slider)
-            except Exception as e:
-                print(f"Error updating duration: {e}")
-                self.root.after(1000, self.update_duration_slider)
+        if not self.is_playing:
+            return
     
+        try:
+            length = self.player.get_length() // 1000
+            position = self.player.get_time() // 1000
+        
+            if length > 0:
+                self.duration_slider.config(to=length)
+                self.duration_var.set(position)
+                self.update_timer_label(position, length)
+            
+            if self.player.get_state() == vlc.State.Ended:
+                self.play_next()
+            else:
+                # Check for significant time jumps (more than 1 second)
+                if abs(self.duration_var.get() - position) > 1:
+                    self.duration_var.set(position) #Correct the slider if there is a jump
+                    self.update_timer_label(position, length)
+                self.root.after(250, self.update_duration_slider)
+                
+        except (vlc.VlcError, AttributeError, ZeroDivisionError) as e:
+            print(f"Error updating duration: {e}")
+            self.root.after(1000, self.update_duration_slider)
     
     def update_timer_label(self, position, length):
-        # Convert seconds to minutes and seconds
         pos_min, pos_sec = divmod(position, 60)
         len_min, len_sec = divmod(length, 60)
         
-        # Update the timer label
         self.timer_label.config(
             text=f"{int(pos_min):02d}:{int(pos_sec):02d} / {int(len_min):02d}:{int(len_sec):02d}"
         )
     
-    # Change the Screen Size
-    def on_frame_resize(self, event):
-        """Handle resizing of the video frame."""
-        # you can adjust video playback size here.
-        # For example, maintaining an aspect ratio:
-        width = event.width
-        height = int(width * 9 / 16)  # Example aspect ratio (16:9)
+
+    def show_preview(self, event):
+        " Show the preview video on the correct position. "
+        try:
+            if self.playlist and self.player.get_length() > 0: #Check if video loaded
+                current_media = self.playlist[self.current_index]
+                total_duration = self.player.get_length() / 1000
+                slider_width = self.duration_slider.winfo_width()
+                mouse_relative_pos = event.x / slider_width
+                preview_time = int(mouse_relative_pos * total_duration)
+
+                preview_image = self.generate_video_preview(current_media, preview_time)
+
+                if preview_image is not None:
+                    minutes, seconds = divmod(preview_time, 60)
+                    preview_text = f"{minutes:02d}:{seconds:02d}"
+                    preview_with_time = self.create_preview_composite(preview_image, preview_text)
+                    photo = ImageTk.PhotoImage(preview_with_time)
+
+                    self.preview_image_label.config(image=photo)
+                    self.preview_image_label.image = photo
+
+                    mouse_x = self.root.winfo_pointerx()
+                    relative_mouse_x = mouse_x - self.root.winfo_rootx()
+
+                    self.PREVIEW_WIDTH = 200
+                    self.PREVIEW_HEIGHT = 120
+
+                    preview_x = relative_mouse_x - (self.PREVIEW_WIDTH // 2)
+
+                    slider_y_relative_to_root = self.duration_slider.winfo_rooty() - self.root.winfo_rooty()
+                    preview_y = slider_y_relative_to_root - self.PREVIEW_HEIGHT - 10
+                    
+                    preview_x = max(0, min(preview_x, self.root.winfo_width() - self.PREVIEW_WIDTH))
+                    preview_y = max(0, preview_y)
+
+                    self.preview_image_label.place(x=preview_x, y=preview_y, width=self.PREVIEW_WIDTH, height=self.PREVIEW_HEIGHT)
+                    self.preview_image_label.lift()
+
+        except Exception as e:
+            print(f"Preview error: {e}")
+            traceback.print_exc()
     
-        self.video_frame.config(width=width, height=height)
+    @lru_cache(maxsize=32)  # Cache up to 32 recent previews
+    def generate_video_preview(self, video_path, timestamp):
+        "Generate a preview frame from the video at the specified timestamp."
+        cap = None
+        try:
+            cap = cv2.VideoCapture(video_path)
+            cap.set(cv2.CAP_PROP_POS_MSEC, timestamp * 1000)
+            ret, frame = cap.read()
+            if ret:
+                frame_resized = cv2.resize(frame, (200, 120), interpolation=cv2.INTER_AREA)
+                frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
+                preview_image = Image.fromarray(frame_rgb)
+                return preview_image
+            return None # Return None if there is no frame to avoid further error
+        except Exception as e:
+            print(f"Error generating preview: {e}")
+            return None
+        finally:
+            if cap is not None:
+                cap.release()
     
+    def create_preview_composite(self, preview_image, timestamp_text):
+        """Create a composite image with preview and timestamp.
+        AkA the most consuming thing
+        """
+        # Create a new image with a dark background
+        composite = Image.new('RGB', (200, 120), color=(0, 0, 0))
+        
+        # Paste the preview image
+        composite.paste(preview_image, (0, 0))
+        
+        # Add timestamp text
+        draw = ImageDraw.Draw(composite)
+        
+        # Try to use a default font
+        try:
+            font = ImageFont.truetype("arial.ttf", 16)
+        except IOError:
+            font = ImageFont.load_default()
+        
+        # Draw text with a semi-transparent background
+        text_bbox = draw.textbbox((0, 0), timestamp_text, font=font)
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+        
+        # Draw semi-transparent background for text
+        draw.rectangle([0, 0, text_width + 10, text_height + 10], 
+                       fill=(0, 0, 0, 128))
+        
+        # Draw text
+        draw.text((5, 5), timestamp_text, font=font, fill=(255, 255, 255))
+        
+        return composite
+
+    def hide_preview(self, event):
+        "Hide the preview image label"
+        self.preview_image_label.place_forget()
+
+    def on_resize(self, event):
+        frame_width = event.width
+        frame_height = event.height
+
+        aspect_ratio = 16 / 9
+        new_width = frame_width
+        new_height = int(frame_width / aspect_ratio)
+
+        if new_height > frame_height:
+            new_height = frame_height
+            new_width = int(frame_height * aspect_ratio)
+
+        new_width = max(new_width, 400)
+        new_height = max(new_height, 225)
+
+        self.video_frame.config(width=new_width, height=new_height)
+        self.root.update()
+
+        
     def bind_keys(self):
-        """Bind keyboard shortcuts to functions."""
-        self.root.bind("<Right>", lambda event: self.skip_forward())  # Right arrow key for forward
-        self.root.bind("<Left>", lambda event: self.skip_back()) # Left arrow key for back
+        self.root.bind("<Right>", lambda event: self.skip_forward())
+        self.root.bind("<Left>", lambda event: self.skip_back())
         self.root.bind("<Up>", lambda event: self.accélération_lecture())
         self.root.bind("<Down>", lambda event: self.décélération_lecture())
+        self.root.bind("<p>", lambda event: self.previous_tracked())
 
     def skip_forward(self, event=None):
-        """Skip forward by 15 seconds."""
         if self.player.is_playing():
-            current_time = self.player.get_time()  # Get current playback time in milliseconds
-            self.player.set_time(min(current_time + 15000, self.player.get_length()))  # Skip forward 15 seconds
+            current_time = self.player.get_time()
+            self.player.set_time(min(current_time + self.SKIP_TIME, self.player.get_length()))
 
-    # As the func_name imply
     def skip_back(self, event=None):
-        """Skip backward by 15 seconds."""
         if self.player.is_playing():
-            current_time = self.player.get_time()  # Get current playback time in milliseconds
-            self.player.set_time(max(current_time - 15000, 0))  # Skip backward 15 seconds
+            current_time = self.player.get_time()
+            self.player.set_time(max(current_time - self.SKIP_TIME, 0))
 
-    # As the func_name imply
     def set_speed(self, value):
-        """Set the playback speed of the media player."""
-        speed = self.speed_var.get()
+        speed = min(self.speed_var.get(), self.MAX_PLAYBACK_SPEED)
+        self.speed_var.set(speed)
         self.player.set_rate(speed)
-        self.speed_label.config(text=f"Speed: {speed:.1f}x")  # Update speed label
+        self.speed_label.config(text=f"Speed: {speed:.1f}x")
+
     
-    # Acceleration video    
+    # Deceleration video    
     def décélération_lecture(self, event=None):
         if self.player.is_playing() and self.playback_speed > 0.5:
             self.playback_speed -= 0.1  # décélère
@@ -337,15 +474,127 @@ class VideoPlayer:
             self.speed_var.set(self.playback_speed)  # Update slider
             self.speed_label.config(text=f"Speed: {self.playback_speed:.1f}x")
         
-    # Deceleration video
+    # Acceleration video
     def accélération_lecture(self, event=None):
-        if self.player.is_playing() and self.playback_speed < 5:
-            self.playback_speed += 0.1 # Accélère
+        if self.player.is_playing() and self.playback_speed < self.MAX_PLAYBACK_SPEED:
+            self.playback_speed = min(self.playback_speed + 0.1, self.MAX_PLAYBACK_SPEED)
             self.player.set_rate(self.playback_speed)
             self.speed_var.set(self.playback_speed)  # Update slider
             self.speed_label.config(text=f"Speed: {self.playback_speed:.1f}x")
-            
+    
+    
+    def load_previous_tracked(self): # Separate function for loading logic
+        if not self.playlist:
+            return
+
+        playlist_length = len(self.playlist)
+        valid_indices = set(range(playlist_length))
+        filepath = Path("watched_videos.txt")
+
+        if not filepath.exists():
+            try:
+                with open(filepath, "w") as f:
+                    f.write(str(set()))
+            except Exception as e:
+                messagebox.showerror("Error", f"Error creating watched videos file: {e}")
+                return
+
+        try:
+            with open(filepath, "r") as f:
+                try:
+                    loaded_tracked = ast.literal_eval(f.read())
+                    if isinstance(loaded_tracked, set):
+                        invalid_indices = loaded_tracked - valid_indices # Find invalid indices
+                        if invalid_indices:
+                            message = f"Some tracked videos are not in the current playlist: {invalid_indices}. They will be ignored."
+                            messagebox.showwarning("Warning", message)
+                            loaded_tracked &= valid_indices # Keep only valid indices equivalent to intersection = set1 & set2
+                            self.watched_videos.update(loaded_tracked)
+                        elif loaded_tracked.issubset(valid_indices):
+                            self.watched_videos.update(loaded_tracked)
+                            messagebox.showinfo("Success", "Tracked videos successfully loaded.")
+                        return
+                    else:
+                        messagebox.showerror("Error", "Invalid data in tracked videos file. Reseting watched list.")
+                        self.watched_videos = set()
+                        with open(filepath, "w") as f:
+                            f.write(str(set()))
+                except (SyntaxError, ValueError):
+                    messagebox.showerror("Error", "Invalid format in tracked videos file. Reseting watched list.")
+                    self.watched_videos = set()
+                    with open(filepath, "w") as f:
+                        f.write(str(set()))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error loading tracked videos: {e}")
+    def save_watched_videos(self): 
+        filepath = Path("watched_videos.txt")
+        try:
+            with open(filepath, "w") as f:
+                f.write(str(self.watched_videos))
+            messagebox.showinfo("Success", f"Watched videos saved to: {filepath.absolute()}") # Messagebox for saving
+        except Exception as e:
+            messagebox.showerror("Error", f"Error saving watched videos: {e}")
+    
+    # Keep tracked of your last session.
+    def previous_tracked(self, event=None):
+        if not self.playlist:
+            return
+
+        playlist_length = len(self.playlist)
+        valid_indices = set(range(playlist_length))
+        filepath = Path("watched_videos.txt")
+
+        if event and event.keysym.lower() == "p":
+            try:
+                with open(filepath, "w") as f:
+                    f.write(str(self.watched_videos))
+                messagebox.showinfo("Success", "Watched videos saved.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Error saving watched videos: {e}")
+            return
+
+        # Check if file exists. Create it with an empty set if it doesn't.
+        if not filepath.exists():
+            try:
+                with open(filepath, "w") as f:
+                    f.write(str(set()))  # Initialize with an empty set
+            except Exception as e:
+                messagebox.showerror("Error", f"Error creating watched videos file: {e}")
+                return # Exit if file creation fails
+
+        response = messagebox.askyesno("Load Previous Session?", "Do you want to load tracked videos from a previous session?")
+
+        if response:
+            try:
+                with open(filepath, "r") as f:
+                    try:
+                        loaded_tracked = ast.literal_eval(f.read())
+                        if isinstance(loaded_tracked, set) and loaded_tracked.issubset(valid_indices):
+                            self.watched_videos.update(loaded_tracked)
+                            messagebox.showinfo("Success", "Tracked videos successfully loaded.")
+                            return
+                        else:
+                            messagebox.showerror("Error", "Invalid data in tracked videos file. Reseting watched list.")
+                            self.watched_videos = set() # reset the watched list
+                            with open(filepath, "w") as f: # write the empty set to the file
+                                f.write(str(set()))
+                    except (SyntaxError, ValueError):
+                        messagebox.showerror("Error", "Invalid format in tracked videos file. Reseting watched list.")
+                        self.watched_videos = set() # reset the watched list
+                        with open(filepath, "w") as f: # write the empty set to the file
+                                f.write(str(set()))
+            except Exception as e:
+                messagebox.showerror("Error", f"Error loading tracked videos: {e}")
+
+        print("Program resume.")
         
+    def load_tracked(self, event=None):
+        self.load_previous_tracked()
+
+    
+             
+        
+            
             
 # Initialize and run the application
 if __name__ == "__main__":
