@@ -1,9 +1,9 @@
-# VideoToolsHub 🎥
+# Advanced-Video-Player-Downloader 🎥
 
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://choosealicense.com/licenses/mit/)
 [![Python](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
 
-A powerful suite of Python-based video tools featuring an advanced Video Playlist Player and Multi-Platform Video Downloader. Perfect for managing and downloading your video content with ease.
+A Python toolkit for seamless video playback (VLC-powered) with preview video included and high-speed downloading from YouTube, Vimeo, and more. Features a user-friendly Tkinter GUI and customizable download options and more.
 
 ## 🚀 Key Features
 
