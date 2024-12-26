@@ -37,17 +37,12 @@ class VideoPlayer:
 
         # Initialize playlist attributes
         self.playlist = []
-        
         self.is_playing = False
         self.is_shuffle = False
         self.playback_speed = 1.0
-        
-        
         self.watched_videos = set()
         
         
-        self.preview_image_label = ttk.Label(self.root)
-        self.preview_image_label.place_forget()  # Initially hidden
         
         # Setup the user interface
         self.setup_ui()
@@ -68,6 +63,10 @@ class VideoPlayer:
         # Create main container frame
         self.main_container = ttk.Frame(self.root)
         self.main_container.pack(fill=tk.BOTH, expand=True, padx=7, pady=4)
+        
+        # Create Preview image
+        self.preview_image_label = ttk.Label(self.root)
+        self.preview_image_label.place_forget()  # Initially hidden
         
 
         # Create video display frame
@@ -444,10 +443,10 @@ class VideoPlayer:
         
     def bind_keys(self):
         self.root.bind("<Right>", lambda event: self.skip_forward())
-        self.root.bind("<Left>", lambda event: self.skip_back())
-        self.root.bind("<Up>", lambda event: self.accélération_lecture())
-        self.root.bind("<Down>", lambda event: self.décélération_lecture())
-        self.root.bind("<p>", lambda event: self.previous_tracked())
+        self.root.bind("<Left>", self.skip_back)
+        self.root.bind("<Up>", self.accélération_lecture)
+        self.root.bind("<Down>", self.décélération_lecture)
+        self.root.bind("<p>", self.previous_tracked)
 
     def skip_forward(self, event=None):
         if self.player.is_playing():
@@ -465,7 +464,6 @@ class VideoPlayer:
         self.player.set_rate(speed)
         self.speed_label.config(text=f"Speed: {speed:.1f}x")
 
-    
     # Deceleration video    
     def décélération_lecture(self, event=None):
         if self.player.is_playing() and self.playback_speed > 0.5:
@@ -543,8 +541,10 @@ class VideoPlayer:
         playlist_length = len(self.playlist)
         valid_indices = set(range(playlist_length))
         filepath = Path("watched_videos.txt")
+        save_response = messagebox.askyesno("Save Current Session?", "Do you want to SAVE tracked videos from Current session?")
 
-        if event and event.keysym.lower() == "p":
+        if event and event.keysym.lower() == "p" and save_response:
+            print("parsing...")
             try:
                 with open(filepath, "w") as f:
                     f.write(str(self.watched_videos))
@@ -562,9 +562,9 @@ class VideoPlayer:
                 messagebox.showerror("Error", f"Error creating watched videos file: {e}")
                 return # Exit if file creation fails
 
-        response = messagebox.askyesno("Load Previous Session?", "Do you want to load tracked videos from a previous session?")
+        load_response = messagebox.askyesno("Load Previous Session?", "Do you want to LOAD tracked videos from a previous session?")
 
-        if response:
+        if load_response:
             try:
                 with open(filepath, "r") as f:
                     try:
