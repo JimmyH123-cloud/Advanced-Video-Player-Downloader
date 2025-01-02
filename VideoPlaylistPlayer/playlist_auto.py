@@ -144,7 +144,7 @@ class VideoPlayer:
         
         menubar = tk.Menu(self.root) 
         filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Load Watched Videos", command=self.load_tracked)
+        filemenu.add_command(label="Load Watched Videos", command=self.load_previous_tracked)
         filemenu.add_command(label="Save Watched Videos", command=self.save_watched_videos)
         menubar.add_cascade(label="File", menu=filemenu)
         self.root.config(menu=menubar) 
@@ -588,14 +588,11 @@ class VideoPlayer:
 
         print("Program resume.")
         
-    def load_tracked(self, event=None):
-        self.load_previous_tracked()
+    
 
     
              
-        
-            
-            
+                   
 # Initialize and run the application
 if __name__ == "__main__":
     root = tk.Tk()
