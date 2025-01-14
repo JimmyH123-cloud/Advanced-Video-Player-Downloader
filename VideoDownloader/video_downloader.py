@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import filedialog
 from yt_dlp import YoutubeDL
 import os
-import sys
 import glob
 import logging
 from collections import defaultdict
@@ -25,7 +24,7 @@ class VideoDownloader:
             self.ffmpeg_path = filedialog.askopenfilename(title="Locate ffmpeg.exe")
             if not os.path.exists(self.ffmpeg_path):
                 logging.error("FFmpeg is still not found. Exiting.")
-                sys.exit(1)
+                exit(1)
         else:
             logging.info(f"Found FFmpeg at: {self.ffmpeg_path}")
 
@@ -389,4 +388,4 @@ if __name__ == "__main__":
         downloader.run()
     except Exception as e:
         logging.error(f"\nFatal error: {str(e)}")
-        sys.exit(1)
+        exit(1)
