@@ -17,14 +17,19 @@ A Python toolkit for seamless video playback (VLC-powered) with preview video in
 - ⌨️ **Keyboard Shortcuts**: Streamlined playback control
 - 💾 **Persistent Watched Tracking**: Saves watched video progress across sessions, handling cases where playlists change.
 - 🖼️ **Video Preview**: Displays a preview thumbnail above the duration bar.
+- 💬 **Merged Subtitle Support:** Load and select from multiple merged subtitle tracks.
 - ⏸️ **Watched Indices Loading**: press "p" to load previous watched video progress or click on file>Load Watched Video
 
 
 ### Video Downloader
-- 🌐 **Universal Platform Support**: Download from YouTube, Vimeo, TikTok, Twitch VODs
-- 📊 **Quality Optimization**: Automatic best quality selection
+
+- 🌐 **Enhanced Platform Support**: Downloads from YouTube, Vimeo, TikTok, Twitch VODs, and more.
+- 📊 **Quality Selection**: Manually choose your desired video quality.
+- 🎬 **Playlist and Single Video Downloads**: Download entire playlists or individual videos as needed.
+- 🎞️ **H.265 (HEVC) Support**: Supports downloading videos encoded with the H.265 codec for efficient compression (requires ffmpeg).
+- 💬 **Multiple Subtitle Downloads**: Download subtitles in multiple languages simultaneously in VTT format.
 - ⚡ **Parallel Processing**: Faster downloads through concurrent fragments
-- 🎛️ **Customizable Settings**: Configure playlists, subtitles, and proxy options
+
 
 ## 📋 Requirements
 
@@ -45,6 +50,7 @@ Pillow
 python 3.x
 yt-dlp
 tkinter (included with Python)
+ffmpeg (must be installed and accessible. Needed to be install at path: C:\)
 ```
 
 ## 🛠️ Installation
@@ -59,6 +65,9 @@ pip install python-vlc
 pip install opencv-python
 pip install Pillow
 
+# VLC Media Player (Required)
+# Download and install VLC Media Player from [https://www.videolan.org/vlc/](https://www.videolan.org/vlc/). Ensure you install the 64-bit version if you are using a 64-bit operating system.
+
 # Launch the application
 python video_playlist_player.py
 ```
@@ -70,6 +79,27 @@ git clone https://github.com/jimmyH123-cloud/VideoDownloader.git
 
 # Install dependencies
 pip install yt-dlp
+
+## Install External Dependencies
+# ffmpeg (Required for H.265/HEVC)
+# This is essential. Follow these steps:
+
+# 1. Download ffmpeg:
+#    * Go to [https://www.gyan.dev/ffmpeg/builds/] or [https://www.ffmpeg.org/download.html] and find the gyan.dev build.
+#    * Look for the latest "Essentials" or "Release" builds. Choose the correct version for your operating system (Windows 64-bit is most common). It will be a .zip file.
+#    * Download the .zip or 7z file.
+
+# 2. Extract ffmpeg:
+#    * Create a new folder named "ffmpeg" directly in your C: drive (C:\ffmpeg). This is the recommended location for simplicity.
+#    * Extract the *contents* of the downloaded .zip file into the C:\ffmpeg folder. 
+# You should now have a folder structure like C:\ffmpeg\bin, C:\ffmpeg\doc, etc. 
+# The important part is that the ffmpeg.exe executable is located in C:\ffmpeg\bin.
+
+# 3. (Important!) Ensure your Python script uses the full path to ffmpeg:
+#    ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe" 
+# If it print "... - ERROR - FFmpeg not found at C:\ffmpeg\bin\ffmpeg.ex" 
+# then locate the ffmpeg and change it to the correct path
+
 
 # Launch the application
 python video_downloader.py
@@ -89,6 +119,7 @@ python video_downloader.py
     *   Pausing the video will *not* automatically save the watched videos. You must use the `<p>` key or the "Save Watched Videos" menu option to save your progress.
     *   When the application starts, you can choose to load previously tracked videos using the "Load Watched Videos" menu option.
     *   **Handling Different Playlists:** If you load watched video data from a previous session and some of the tracked videos are *not* present in the current playlist, a warning message will be displayed, and those invalid entries will be ignored. Only the valid entries for the current playlist will be loaded.
+8. Merged Subtitle Support: If your videos have merged subtitles (e.g., embedded within the video file or in a separate file alongside the video), the player will detect them and allow you to select which track to display. You can select them from the menu option
 
 
 #### Keyboard Shortcuts
@@ -103,12 +134,14 @@ python video_downloader.py
 ### Video Downloader
 1. Launch the application
 2. Paste your video URL
-3. Select download location
-4. Wait for completion
+3. Select the output directory.
+4. Select Video Quality: Choose your desired video quality.
+5. Wait for completions
+6. (Playlist option) Repeat step 4 and 5. 
 
 ## 🐛 Known Issues
 - After watching all videos, use **RTWV** (Reset Tracked Watched Videos) and press **Next** or **Play/Pause** to restart playback
-- **Video Downloader** may not always download the best qualities for some videos.  
+ 
 
 ## 📄 License
 This project is MIT licensed - see the [LICENSE](LICENSE) file for details

@@ -9,7 +9,7 @@ import cv2
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from functools import lru_cache
 import ast
-
+import time
 
 
 class VideoPlayer:
@@ -33,15 +33,25 @@ class VideoPlayer:
         
         # Initialize VLC instance and media player
         self.instance = vlc.Instance(instance_args)
+        
         self.player = self.instance.media_player_new()
 
+        self.cap = None
         # Initialize playlist attributes
         self.playlist = []
-        self.is_playing = False
-        self.is_shuffle = False
+        self.is_playing = False # For toggle play/pause logic
+        self.is_shuffle = False # For toggle random/stactic next video logic
         self.playback_speed = 1.0
-        self.watched_videos = set()
+        self.watched_videos = set() 
         
+        self.last_hover_time = 0
+        self.hover_cooldown = 0.1  # 10ms cooldown between hover events to reduce `computationnal comsuption`.
+        
+        # Try to use a default font
+        try:
+            self.font = ImageFont.truetype("arial.ttf", 16)
+        except IOError:
+            self.font = ImageFont.load_default()
         
         
         # Setup the user interface
@@ -68,15 +78,15 @@ class VideoPlayer:
         self.preview_image_label = ttk.Label(self.root)
         self.preview_image_label.place_forget()  # Initially hidden
         
-
+    
         # Create video display frame
         self.video_frame = ttk.Frame(self.main_container, borderwidth=2, relief='solid')
         self.video_frame.pack(fill=tk.BOTH, expand=True)
-
+        
         # Set the desired aspect ratio for the video
         self.video_frame.pack_propagate(False)
         self.video_frame.config(width=900, height=700)
-
+               
         # Create a container for preview and slider
         preview_container = ttk.Frame(self.main_container)
         preview_container.pack(fill=tk.X, padx=5, pady=5)
@@ -123,7 +133,7 @@ class VideoPlayer:
         # Playlist display frame
         playlist_frame = ttk.Frame(self.main_container)
         playlist_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-
+        
         self.playlist_box = tk.Listbox(playlist_frame, selectmode=tk.SINGLE)
         self.playlist_box.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
@@ -143,10 +153,17 @@ class VideoPlayer:
         self.duration_slider.bind("<Button-1>", self.duration_bar_click)
         
         menubar = tk.Menu(self.root) 
+        
         filemenu = tk.Menu(menubar, tearoff=0)
         filemenu.add_command(label="Load Watched Videos", command=self.load_previous_tracked)
         filemenu.add_command(label="Save Watched Videos", command=self.save_watched_videos)
         menubar.add_cascade(label="File", menu=filemenu)
+        
+        subtitlemenu = tk.Menu(menubar, tearoff=0)
+        subtitlemenu.add_command(label="Enable Subtitles", command=self.enable_subtitles)
+        subtitlemenu.add_command(label="Disable Subtitles", command=self.disable_subtitles)
+        subtitlemenu.add_command(label="Select Subtitle Track", command=self.select_subtitle_track)
+        menubar.add_cascade(label="Subtitles", menu=subtitlemenu)
         self.root.config(menu=menubar) 
 
         # print("Video frame created")
@@ -156,6 +173,11 @@ class VideoPlayer:
 
     def load_folder(self):
         folder = filedialog.askdirectory()
+        if os.name == 'nt':
+                self.player.set_hwnd(self.video_frame.winfo_id())
+        else:
+            self.player.set_xwindow(self.video_frame.winfo_id())
+        
         if folder:
             self.playlist.clear()
             self.playlist_box.delete(0, tk.END)
@@ -176,23 +198,33 @@ class VideoPlayer:
             return
         
         if 0 <= self.current_index < len(self.playlist):
-            media = self.instance.media_new(self.playlist[self.current_index])
-            self.player.set_media(media)
+            self.media = self.instance.media_new(self.playlist[self.current_index])
+            # print(f"Loading media: {self.playlist[self.current_index]}")
             
-            if os.name == 'nt':
-                self.player.set_hwnd(self.video_frame.winfo_id())
-            else:
-                self.player.set_xwindow(self.video_frame.winfo_id())
+            self.media.parse_with_options(vlc.MediaParseFlag.local, -1)
+            self.player.set_media(self.media)
             
             self.player.play()
             self.is_playing = True
             self.play_button.config(text="Pause")
             
+            time.sleep(0.5) # Give time to process subtitle parsing before running get_subtitle_tracks()
+            
+            self.subtitle_tracks = self.get_subtitle_tracks()
+        
+            # Update the playlist UI
             self.playlist_box.selection_clear(0, tk.END)
             self.playlist_box.selection_set(self.current_index)
             self.playlist_box.see(self.current_index)
+            
+            # Mark the video as watched
             self.watched_videos.add(self.current_index)
+            
+            # Update the duration slider
             self.update_duration_slider()
+            
+            # disable previous video subtitle by default
+            self.disable_subtitles()
             
             print(f"""
             {"=" * 55}
@@ -200,14 +232,13 @@ class VideoPlayer:
             || {os.path.basename(self.playlist[self.current_index]):^49} ||
             {"=" * 55}
             """)
-        
-        
-    def toggle_play(self):
+    
+    
+    def toggle_play(self, event=None):
         if self.player.is_playing():
             self.player.pause()
             self.play_button.config(text="Play")
-            print(f"""\nset of self.watched_video:|-> {self.watched_videos} <-| \nand title watched:  {[os.path.basename(self.playlist[i]) for i in self.watched_videos]}""")
-            
+            print(f"""\nset of self.watched_video:|-> {self.watched_videos} <-| \nand title watched:  {[os.path.basename(self.playlist[i]) for i in self.watched_videos]}""")   
         else:
             self.player.play()
             self.play_button.config(text="Pause")
@@ -230,7 +261,7 @@ class VideoPlayer:
     
     def duration_bar_click(self, event):
         "Handle clicks on the duration bar."
-        if self.player.get_length() > 0:
+        if self.player.get_length() > 0 :
             slider_width = self.duration_slider.winfo_width()
             if slider_width > 0:
                 total_duration = self.player.get_length() / 1000
@@ -243,12 +274,17 @@ class VideoPlayer:
         self.player.audio_set_volume(self.volume_var.get())
 
     def toggle_shuffle(self):
-        self.is_shuffle = not self.is_shuffle
+        self.is_shuffle = not self.is_shuffle ## apply "not" and change the boolean value
         self.shuffle_button.config(text="Shuffle Off" if self.is_shuffle else "Shuffle On")
         self.watched_videos.clear()
 
     def on_closing(self):
+        if hasattr(self, 'media'):
+            self.media.release() 
+            del self.media 
         self.player.stop()
+        self.player.release()
+        del self.player
         self.root.destroy()
 
     def play_next(self):
@@ -267,7 +303,6 @@ class VideoPlayer:
             else:
                 self.current_index = (self.current_index + 1) % len(self.playlist)
             
-        
             if self.current_index not in self.watched_videos or original_index == self.current_index or len(self.watched_videos) == len(self.playlist):
                 break
         
@@ -308,7 +343,6 @@ class VideoPlayer:
                     self.duration_var.set(position) #Correct the slider if there is a jump
                     self.update_timer_label(position, length)
                 self.root.after(250, self.update_duration_slider)
-                
         except (vlc.VlcError, AttributeError, ZeroDivisionError) as e:
             print(f"Error updating duration: {e}")
             self.root.after(1000, self.update_duration_slider)
@@ -321,9 +355,12 @@ class VideoPlayer:
             text=f"{int(pos_min):02d}:{int(pos_sec):02d} / {int(len_min):02d}:{int(len_sec):02d}"
         )
     
-
     def show_preview(self, event):
         " Show the preview video on the correct position. "
+        current_time = time.time()
+        if current_time - self.last_hover_time < self.hover_cooldown:
+            return  # Skip if still in cooldown
+        
         try:
             if self.playlist and self.player.get_length() > 0: #Check if video loaded
                 current_media = self.playlist[self.current_index]
@@ -359,10 +396,11 @@ class VideoPlayer:
 
                     self.preview_image_label.place(x=preview_x, y=preview_y, width=self.PREVIEW_WIDTH, height=self.PREVIEW_HEIGHT)
                     self.preview_image_label.lift()
-
         except Exception as e:
             print(f"Preview error: {e}")
             traceback.print_exc()
+            
+        self.last_hover_time = current_time
     
     @lru_cache(maxsize=32)  # Cache up to 32 recent previews
     def generate_video_preview(self, video_path, timestamp):
@@ -371,6 +409,10 @@ class VideoPlayer:
         try:
             cap = cv2.VideoCapture(video_path)
             cap.set(cv2.CAP_PROP_POS_MSEC, timestamp * 1000)
+            
+            for _ in range(5):  # Skip a few frames to stabilize the decoder
+                cap.grab()
+            
             ret, frame = cap.read()
             if ret:
                 frame_resized = cv2.resize(frame, (200, 120), interpolation=cv2.INTER_AREA)
@@ -398,14 +440,8 @@ class VideoPlayer:
         # Add timestamp text
         draw = ImageDraw.Draw(composite)
         
-        # Try to use a default font
-        try:
-            font = ImageFont.truetype("arial.ttf", 16)
-        except IOError:
-            font = ImageFont.load_default()
-        
         # Draw text with a semi-transparent background
-        text_bbox = draw.textbbox((0, 0), timestamp_text, font=font)
+        text_bbox = draw.textbbox((0, 0), timestamp_text, font=self.font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
         
@@ -414,7 +450,7 @@ class VideoPlayer:
                        fill=(0, 0, 0, 128))
         
         # Draw text
-        draw.text((5, 5), timestamp_text, font=font, fill=(255, 255, 255))
+        draw.text((5, 5), timestamp_text, font=self.font, fill=(255, 255, 255))
         
         return composite
 
@@ -447,6 +483,7 @@ class VideoPlayer:
         self.root.bind("<Up>", self.accélération_lecture)
         self.root.bind("<Down>", self.décélération_lecture)
         self.root.bind("<p>", self.previous_tracked)
+        
 
     def skip_forward(self, event=None):
         if self.player.is_playing():
@@ -480,6 +517,79 @@ class VideoPlayer:
             self.speed_var.set(self.playback_speed)  # Update slider
             self.speed_label.config(text=f"Speed: {self.playback_speed:.1f}x")
     
+    # Get a list of available subtitle tracks.
+    def get_subtitle_tracks(self):
+        
+        tracks = []
+        spu_count = self.player.video_get_spu_count()
+        print(f"Total subtitle tracks: {spu_count}")
+        
+        # Get the list of subtitle track descriptions
+        descriptions = self.player.video_get_spu_description()
+        
+        for i in range(spu_count):
+            if i < len(descriptions):
+                track_id, track_name = descriptions[i]
+                # Decode the track name from bytes to string
+                track_name = track_name.decode('utf-8')
+                tracks.append((track_id, track_name))  # (track_id, track_name)
+            else:
+                print(f"Subtitle track {i}: No description available")
+        
+        return tracks
+    
+    # Enable the first available subtitle track.
+    def enable_subtitles(self):
+        
+        if self.subtitle_tracks:
+            self.player.video_set_spu(self.subtitle_tracks[0][0])  # Enable the first track
+            print(f"Subtitles enabled: {self.subtitle_tracks[0][1]}")
+        else:
+            print("No subtitles available.")
+
+    # Disable subtitles.
+    def disable_subtitles(self):
+        
+        if self.player:
+            self.player.video_set_spu(-1)  # Disable subtitles
+            print("Subtitles disabled.")
+    
+    # Open a dialog to let the user select a subtitle track.
+    def select_subtitle_track(self):
+        
+        if not self.subtitle_tracks:
+            messagebox.showinfo("No Subtitles", "No subtitle tracks available.")
+            return
+
+        # Create a dialog to select a subtitle track
+        track_dialog = tk.Toplevel(self.root)
+        track_dialog.title("Select Subtitle Track")
+        track_dialog.geometry("300x200")
+
+        tk.Label(track_dialog, text="Choose a subtitle track:").pack(pady=10)
+
+        
+        track_names = [track[1] for track in self.subtitle_tracks] # Extract track names for the dropdown menu
+
+        # Dropdown menu for subtitle tracks
+        selected_track = tk.StringVar(track_dialog)
+        selected_track.set(track_names[0])  # Default to the first track
+        track_menu = tk.OptionMenu(track_dialog, selected_track, *track_names)
+        track_menu.pack(pady=10)
+
+        # Button to confirm selection
+        def on_select():
+            track_name = selected_track.get()  # This is a string
+            try:
+                # Find the track ID for the selected track name
+                track_id = next(track[0] for track in self.subtitle_tracks if track[1] == track_name)
+                self.player.video_set_spu(track_id)
+                print(f"Selected subtitle track: {track_name}")
+            except StopIteration:
+                print(f"Subtitle track '{track_name}' not found.")
+            track_dialog.destroy()
+
+        tk.Button(track_dialog, text="Select", command=on_select).pack(pady=10)
     
     def load_previous_tracked(self): # Separate function for loading logic
         if not self.playlist:
@@ -524,6 +634,7 @@ class VideoPlayer:
                         f.write(str(set()))
         except Exception as e:
             messagebox.showerror("Error", f"Error loading tracked videos: {e}")
+    
     def save_watched_videos(self): 
         filepath = Path("watched_videos.txt")
         try:
@@ -589,10 +700,6 @@ class VideoPlayer:
         print("Program resume.")
         
     
-
-    
-             
-                   
 # Initialize and run the application
 if __name__ == "__main__":
     root = tk.Tk()
