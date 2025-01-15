@@ -90,12 +90,10 @@ pip install yt-dlp
 #    * Download the .zip or 7z file.
 
 # 2. Extract ffmpeg:
-#    * Create a new folder named "ffmpeg" directly in your C: drive (C:\ffmpeg). This is the recommended location for simplicity.
-#    * Extract the *contents* of the downloaded .zip file into the C:\ffmpeg folder. 
-# You should now have a folder structure like C:\ffmpeg\bin, C:\ffmpeg\doc, etc. 
-# ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe" 
-# If it print "... - ERROR - FFmpeg not found at C:\ffmpeg\bin\ffmpeg.ex" 
-# then locate the ffmpeg and change it to the correct path
+#    * Extract the *contents* of the downloaded .zip file directly in your C: drive (C:\ffmpeg). This is the recommended location for simplicity.
+#    * Rename the folder ffmpeg-...-full_build to ffmpeg
+#    * You should now have a folder structure like C:\ffmpeg\bin, C:\ffmpeg\doc, etc. 
+# And if it doesn't print "... - ERROR - FFmpeg not found at C:\ffmpeg\bin\ffmpeg.exe" after launching the script then it should work
 
 
 # Launch the application
