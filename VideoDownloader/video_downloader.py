@@ -219,11 +219,25 @@ class VideoDownloader:
                 try:
                     choice_idx = int(choice)
                     if choice_idx == 0:
-                        format_code = 'bestvideo[ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+                        
+                        # Best quality (automatic): Try HEVC first,then AVC, then fallback
+                        format_code = (
+                            'bestvideo[ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/'  # HEVC (H.265) format: 313 
+                            'bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137
+                            'bestvideo[ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video 
+                            'bestvideo+bestaudio/best'                              # Fallback to best available
+                        )
                         break
                     elif 1 <= choice_idx <= len(sorted_heights):
+                        
+                        # Specific resolution: Try HEVC first, then AVC, then fallback
                         selected_height = sorted_heights[choice_idx - 1]
-                        format_code = f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+                        format_code = (
+                            f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/'  # HEVC (H.265) format: 313
+                            f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137
+                            f'bestvideo[height<={selected_height}][ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video 
+                            f'bestvideo[height<={selected_height}]+bestaudio/best'                              # Fallback to best available
+                        )
                         break
                     elif choice_idx == len(sorted_heights) + 1:
                         return False  # Cancelled
