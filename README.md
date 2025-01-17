@@ -26,7 +26,7 @@ A Python toolkit for seamless video playback (VLC-powered) with preview video in
 - 🌐 **Enhanced Platform Support**: Downloads from YouTube, Vimeo, TikTok, Twitch VODs, and more.
 - 📊 **Quality Selection**: Manually choose your desired video quality.
 - 🎬 **Playlist and Single Video Downloads**: Download entire playlists or individual videos as needed.
-- 🎞️ **H.265 (HEVC) Support**: Supports downloading videos encoded with the H.265 codec for efficient compression (requires ffmpeg).
+- 🎞️ **H.265/H.264 (HEVC) Support**: Supports downloading videos encoded with the H.265 codec for efficient compression or H.264 (requires ffmpeg).
 - 💬 **Multiple Subtitle Downloads**: Download subtitles in multiple languages simultaneously in VTT format.
 - ⚡ **Parallel Processing**: Faster downloads through concurrent fragments
 
@@ -81,7 +81,7 @@ git clone https://github.com/jimmyH123-cloud/VideoDownloader.git
 pip install yt-dlp
 
 ## Install External Dependencies
-# ffmpeg (Required for H.265/HEVC)
+# ffmpeg (Required for H.265/HEVC / H.264/AVC)
 # This is essential. Follow these steps:
 
 # 1. Download ffmpeg:
@@ -91,7 +91,7 @@ pip install yt-dlp
 
 # 2. Extract ffmpeg:
 #    * Extract the *contents* of the downloaded .zip file directly in your C: drive (C:\ffmpeg). This is the recommended location for simplicity.
-#    * Rename the folder ffmpeg-...-full_build to ffmpeg
+#    * Rename the folder ffmpeg-..-.. to ffmpeg.
 #    * You should now have a folder structure like C:\ffmpeg\bin, C:\ffmpeg\doc, etc. 
 # And if it doesn't print "... - ERROR - FFmpeg not found at C:\ffmpeg\bin\ffmpeg.exe" after launching the script then it should work
 
