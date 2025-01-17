@@ -42,7 +42,7 @@ class VideoPlayer:
             self.window_height = int(screen_height * 0.7)
             self.window_width = int(self.window_height * (16 / 9))
             
-        self.root.geometry(f"{self.window_width}x{screen_height - 100}")
+        self.root.geometry(f"{self.window_width * 0.5714:.0f}x{screen_height - 100}") # scale up to 40% of window width
         
         instance_args = [
             '--quiet', # Reduce logging
