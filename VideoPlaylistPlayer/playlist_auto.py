@@ -23,7 +23,26 @@ class VideoPlayer:
         # Initialize the main window
         self.root = root
         self.root.title("Video Playlist Player")
-        self.root.geometry("900x980")
+
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+
+        
+        self.window_width = int(screen_width * 0.7) # Set the initial window size to 70% of the screen size 
+        self.window_height = int(self.window_width / (16 / 9))  # Maintain 16:9 aspect ratio
+
+        # Set minimum window size
+        min_window_width = 800
+        min_window_height = 450  # Maintain 16:9 aspect ratio
+        self.window_width = max(self.window_width, min_window_width)
+        self.window_height = max(self.window_height, min_window_height)
+        
+        # Ensure the window height does not exceed the screen height
+        if self.window_height > screen_height:
+            self.window_height = int(screen_height * 0.7)
+            self.window_width = int(self.window_height * (16 / 9))
+            
+        self.root.geometry(f"{self.window_width}x{screen_height - 100}")
         
         instance_args = [
             '--quiet', # Reduce logging
@@ -36,7 +55,6 @@ class VideoPlayer:
         
         self.player = self.instance.media_player_new()
 
-        self.cap = None
         # Initialize playlist attributes
         self.playlist = []
         self.is_playing = False # For toggle play/pause logic
@@ -85,7 +103,7 @@ class VideoPlayer:
         
         # Set the desired aspect ratio for the video
         self.video_frame.pack_propagate(False)
-        self.video_frame.config(width=900, height=700)
+        self.video_frame.config(width=int(f"{self.window_width}"), height=int(f"{self.window_height}"))
                
         # Create a container for preview and slider
         preview_container = ttk.Frame(self.main_container)
@@ -463,18 +481,17 @@ class VideoPlayer:
         frame_height = event.height
 
         aspect_ratio = 16 / 9
-        new_width = frame_width
-        new_height = int(frame_width / aspect_ratio)
+        new_height= frame_height
+        new_width = int(frame_height / aspect_ratio)
 
         if new_height > frame_height:
-            new_height = frame_height
-            new_width = int(frame_height * aspect_ratio)
+            new_height = frame_width
+            new_width = int(frame_width * aspect_ratio)
 
         new_width = max(new_width, 400)
         new_height = max(new_height, 225)
 
         self.video_frame.config(width=new_width, height=new_height)
-        self.root.update()
 
         
     def bind_keys(self):
