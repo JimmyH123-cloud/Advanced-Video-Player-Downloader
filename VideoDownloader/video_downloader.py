@@ -168,6 +168,9 @@ class VideoDownloader:
                 '-c:a', 'copy',  # Copy audio stream (no re-encoding)
                 '-map', '0:v',   # Map video stream from input 0
                 '-map', '0:a',   # Map audio stream from input 0
+                '-threads', '2',  # Limit threads to reduce CPU load
+                '-preset', 'medium ',  # Use the (x) preset
+                '-map_metadata', '-1',  # Skip writing metadata: title,creation_date,etc..
             ])
 
             # Map subtitles if available
@@ -219,11 +222,10 @@ class VideoDownloader:
                 try:
                     choice_idx = int(choice)
                     if choice_idx == 0:
-                        
                         # Best quality (automatic): Try HEVC first,then AVC, then fallback
                         format_code = (
                             'bestvideo[ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/'  # HEVC (H.265) format: 313 
-                            'bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137
+                            'bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137 or 299
                             'bestvideo[ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video 
                             'bestvideo+bestaudio/best'                              # Fallback to best available
                         )
@@ -234,7 +236,7 @@ class VideoDownloader:
                         selected_height = sorted_heights[choice_idx - 1]
                         format_code = (
                             f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/'  # HEVC (H.265) format: 313
-                            f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137
+                            f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137 or 299
                             f'bestvideo[height<={selected_height}][ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video 
                             f'bestvideo[height<={selected_height}]+bestaudio/best'                              # Fallback to best available
                         )
@@ -258,13 +260,13 @@ class VideoDownloader:
                 'progress_hooks': [self.print_progress],
                 'writesubtitles': True,
                 'writeautomaticsub': True,
-                'subtitlesformat': 'vtt',
+                'subtitlesformat': 'ass',
                 'subtitleslangs': ['en', 'fr'],  # Download subtitles. If you want to download a specific subtitle, just add to the list. For example: ["en", "fr", "es", "ja", "cn"] 
                 'concurrent_fragment_downloads': 2,  # Enable multithreaded downloads to make the downloading faster. Be cautious of server limit if increasing fragments
                 'postprocessors': [
                     {
                         'key': 'FFmpegSubtitlesConvertor',
-                        'format': 'vtt',
+                        'format': 'ass',
                     },
                 ],
             }
@@ -280,7 +282,7 @@ class VideoDownloader:
                 return False
             
             # Get subtitle paths
-            subtitle_files = glob.glob(os.path.join(save_path, f"{glob.escape(sanitized_title)}.*.vtt"))
+            subtitle_files = glob.glob(os.path.join(save_path, f"{glob.escape(sanitized_title)}.*.ass"))
             logging.info(f"Subtitles found: {subtitle_files}")
 
             # Re-encode video and embed subtitles
@@ -322,7 +324,7 @@ class VideoDownloader:
     # If downloading failed, attempt to delete any left over
     def cleanup_subtitles(self, save_dir, video_title):
         try:
-            subtitle_files = glob.glob(os.path.join(save_dir, f"{video_title}.*.vtt"))
+            subtitle_files = glob.glob(os.path.join(save_dir, f"{video_title}.*.ass"))
             for file in subtitle_files:
                 if os.path.exists(file):
                     os.remove(file)
