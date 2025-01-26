@@ -7,20 +7,5 @@ venv/
 env/
 .env
 
-# IDE or editor specific files
-.idea/
-.vscode/
-*.swp
-*.swo
 
-# Distribution / packaging
-*.egg-info/
-dist/
-build/
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-# System files
-.DS_Store
-Thumbs.db
