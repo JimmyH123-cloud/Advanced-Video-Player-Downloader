@@ -114,7 +114,7 @@ python video_downloader.py
     *   Pausing the video will *not* automatically save the watched videos. You must use the `<p>` key or the "Save Watched Videos" menu option to save your progress.
     *   When the application starts, you can choose to load previously tracked videos using the "Load Watched Videos" menu option.
     *   **Handling Different Playlists:** If you load watched video data from a previous session and some of the tracked videos are *not* present in the current playlist, a warning message will be displayed, and those invalid entries will be ignored. Only the valid entries for the current playlist will be loaded.
-8. Merged Subtitle Support: If your videos have merged subtitles (e.g., embedded within the video file), the player will detect them and allow you to select which track to display. You can select them from the menu option
+8. **Merged Subtitle Support:** If your videos have merged subtitles (e.g., embedded within the video file), the player will detect them and allow you to select which track to display. You can select them from the menu option
 
 
 #### Keyboard Shortcuts
@@ -136,6 +136,7 @@ python video_downloader.py
 
 ## 🐛 Known Issues
 - After watching all videos, use **RTWV** (Reset Tracked Watched Videos) and press **Next** or **Play/Pause** to restart playback
+- **Video Downloader:** The downloading proccessing may take severals minutes depending on the file size, `resolution` (1080p, 4K), `codec` used to convert, `subtitle merging` and `internet speed`. (If the terminal is freezing for a while, it mean that it's proccessing. )
  
 
 ## 📄 License
