@@ -294,7 +294,7 @@ class VideoPlayer:
     def toggle_shuffle(self):
         self.is_shuffle = not self.is_shuffle ## apply "not" and change the boolean value
         self.shuffle_button.config(text="Shuffle Off" if self.is_shuffle else "Shuffle On")
-        self.watched_videos.clear()
+        
 
     def on_closing(self):
         if hasattr(self, 'media'):
