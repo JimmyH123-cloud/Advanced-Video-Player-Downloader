@@ -179,6 +179,7 @@ class VideoDownloader:
                     command.extend([
                         '-map', f'{idx}:s',  # Map subtitle stream from input idx
                         f'-metadata:s:s:{idx-1}', f'language={sub_path[-6:-4]}',  # Set subtitle language
+                        f'-metadata:s:s:{idx-1}', f'title=subtitle.{sub_path[-6:-4]}',  # Set subtitle track title
                     ])
                 command.extend(['-c:s', 'mov_text'])  # Embed subtitles as mov_text format
 
@@ -226,7 +227,7 @@ class VideoDownloader:
                         format_code = (
                             'bestvideo[ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/'  # HEVC (H.265) format: 313 
                             'bestvideo[ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137 or 299
-                            'bestvideo[ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video 
+                            'bestvideo[ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video VP9 format: 298
                             'bestvideo+bestaudio/best'                              # Fallback to best available
                         )
                         break
@@ -237,7 +238,7 @@ class VideoDownloader:
                         format_code = (
                             f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=hevc]+bestaudio[ext=m4a]/'  # HEVC (H.265) format: 313
                             f'bestvideo[height<={selected_height}][ext=mp4][vcodec^=avc1]+bestaudio[ext=m4a]/'  # AVC (H.264) format: 137 or 299
-                            f'bestvideo[height<={selected_height}][ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video 
+                            f'bestvideo[height<={selected_height}][ext=mp4]+bestaudio[ext=m4a]/'                # Any MP4 video VP9 format: 298
                             f'bestvideo[height<={selected_height}]+bestaudio/best'                              # Fallback to best available
                         )
                         break
