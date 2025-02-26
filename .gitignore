@@ -3,11 +3,14 @@ __pycache__/
 *.py[cod]
 
 # Virtual environment
-venv
-venv/
-env/
 .env
-
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 .vscode
+
 # Ignore the file
 watched_videos.txt
