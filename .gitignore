@@ -1,16 +1,28 @@
-# Python cache files
-__pycache__/
-*.py[cod]
+# Ignore python compiled files
+*.pyc
 
-# Virtual environment
-.env
-.venv
-env/
+# Ignore .vlc directory which stores VLC settings
+.vlc/
+
+# Ignore __pycache__ directories, they are usually not needed in version control
+__pycache__/
+
+# Ignore the venv directory if you're using virtual environments
 venv/
-ENV/
-env.bak/
-venv.bak/
-.vscode
+.venv/
+
+# Ignore any files that were created by your IDE or text editor
+*.idea/
+vscode/
+.vscode/
+
+# Ignore logs and temp files
+logs/
+temp/
+
+# Ignore Python environment variables
+ENV_VARIABLES
+
 
 # Ignore the file
 watched_videos.txt
