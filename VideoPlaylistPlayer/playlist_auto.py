@@ -140,7 +140,7 @@ class VideoPlayer:
 
         ttk.Button(controls, text="RTWV", command=self.reset_watched_videos, width=6.5).pack(side=tk.LEFT, padx=2, pady=2)
 
-        self.shuffle_button = ttk.Button(controls, text="Shuffle On", command=self.toggle_shuffle)
+        self.shuffle_button = ttk.Button(controls, text="Shuffle Off", command=self.toggle_shuffle)
         self.shuffle_button.pack(side=tk.LEFT, padx=4)
 
         self.volume_var = tk.IntVar(value=50)
@@ -293,7 +293,7 @@ class VideoPlayer:
 
     def toggle_shuffle(self):
         self.is_shuffle = not self.is_shuffle ## apply "not" and change the boolean value
-        self.shuffle_button.config(text="Shuffle Off" if self.is_shuffle else "Shuffle On")
+        self.shuffle_button.config(text="Shuffle On" if self.is_shuffle else "Shuffle Off")
         
 
     def on_closing(self):
