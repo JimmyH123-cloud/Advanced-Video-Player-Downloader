@@ -134,6 +134,28 @@ python video_downloader.py
 5. Wait for completions
 6. (Playlist option) Repeat step 4 and 5. 
 
+#### Settings
+```py
+# Defaults
+
+# Controls whether subtitle files leftover after embedding are kept.
+GET_SUBTITLE_LEFTOVER = False  # Set True/False
+
+# Optional cookies file (not required by default).
+# Use only if you hit anti-bot detection; contains session tokens.
+# COOKIES_NAME = 'cookies.txt'  # Uncomment to enable
+
+# Controls whether the downloader requests subtitles via yt-dlp.
+# If True, yt-dlp will attempt to download subtitles (may trigger HTTP 429).
+DOWNLOAD_SUBTITLES = True      # Set True/False
+```
+
+#### Quick 429 troubleshooting
+
+> refer to https://github.com/yt-dlp/yt-dlp/issues/13831
+- If you get HTTP 429 for subtitles, set DOWNLOAD_SUBTITLES = False to download video only. or check if the specific video has the specific subtitle available
+
+
 ## 🐛 Known Issues
 - After watching all videos, use **RTWV** (Reset Tracked Watched Videos) and press **Next** or **Play/Pause** to restart playback
 - **Video Downloader:** The downloading proccessing may take severals minutes depending on the file size, `resolution` (1080p, 4K), `codec` used to convert, `subtitle merging` and `internet speed`. (If the terminal is freezing for a while, it mean that it's proccessing. )
