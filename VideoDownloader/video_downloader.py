@@ -7,12 +7,22 @@ import logging
 from collections import defaultdict
 import subprocess
 import time
-
+# from yt_dlp.networking.impersonate import ImpersonateTarget
 
 # basic log
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class VideoDownloader:
+    # SETTINGS, can be configure freely
+    
+    GET_SUBTITLE_LEFTOVER = False # Set True/False | Option to keep the subtitle as file, if the user want to modify the subtitle or use it later.
+    
+    # COOKIES_NAME = 'cookies.txt' # Not needed until issues appear. Option to use youtube_cookies in case if yt anti bot detect.
+    
+    DOWNLOAD_SUBTITLES = True # Set True/False | Option to download the subtitle, if True, cautious as HTTP Error 429 might happen with Youtube if the specific subtitle is not available in the video
+    
+    
+    
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()
@@ -86,17 +96,27 @@ class VideoDownloader:
             
             return info, formats_by_res, video_formats
 
+    # Returns the base ydl options for all requests to avoid rate limiting
+    def get_base_ydl_opts(self):
+        return {
+            'socket_timeout': 15,
+            # 'retries': 10, # not needed until issues appear
+            # 'fragment_retries': 10,
+            # 'sleep_interval': 2, 
+            # 'max_sleep_interval': 6,
+            # 'sleep_subtitles': 5, 
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+        }
+    
     # Extract video URLs from a playlist.
     def get_playlist_videos(self, url):
         
-        ydl_opts = {
-            'quiet': True,
-            'socket_timeout': 15,  # Timeout in seconds
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
-            },
-            'extract_flat': True,  # Get only metadata without processing each video
-        }
+        ydl_opts = self.get_base_ydl_opts()
+        ydl_opts['extract_flat'] = 'in_playlist'
+        ydl_opts['quiet'] = True
+        
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             if 'entries' in info:
@@ -252,29 +272,42 @@ class VideoDownloader:
             video_title = info.get('title', 'video')
             sanitized_title = self.sanitize_filename(video_title)
             
+            
             # Configure ydl_opts
-            ydl_opts = {
+            ydl_opts = self.get_base_ydl_opts() # add base configuration
+            ydl_opts.update({
+                # 'cookiefile': self.COOKIES_NAME, # not needed until issues appear
+                # 'impersonate': ImpersonateTarget('chrome'),  not needed until issues appear
                 'format': format_code,
                 'outtmpl': os.path.join(save_path, f"{sanitized_title}.%(ext)s"),
                 'merge_output_format': 'mp4',
                 'ffmpeg_location': self.ffmpeg_path,
                 'progress_hooks': [self.print_progress],
-                'writesubtitles': True,
-                'writeautomaticsub': True,
-                'subtitlesformat': 'ass',
-                'subtitleslangs': ['en', 'fr'],  # Download subtitles. If you want to download a specific subtitle, just add to the list. For example: ["en", "fr", "es", "ja", "cn"] 
                 'concurrent_fragment_downloads': 2,  # Enable multithreaded downloads to make the downloading faster. Be cautious of server limit if increasing fragments
-                'postprocessors': [
-                    {
-                        'key': 'FFmpegSubtitlesConvertor',
-                        'format': 'ass',
-                    },
-                ],
-            }
+            })
+            
+            if self.DOWNLOAD_SUBTITLES: 
+                ydl_opts.update({
+                    'writesubtitles': True,
+                    'writeautomaticsub': True,
+                    'subtitlesformat': 'ass',
+                    'subtitleslangs': ['en'],  # Download subtitles. If you want to download a specific subtitle, just add to the list. For example: ["en", "fr", "es", "ja", "cn"] 
+                    'postprocessors': [
+                        {
+                            'key': 'FFmpegSubtitlesConvertor',
+                            'format': 'ass',
+                        },
+                    ],
+                })
+                
 
             # Download video and subtitles
-            with YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+            try:
+                with YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+            except Exception as e:
+                logging.error(f"\nError downloading the video: {str(e)}")
+                return False
 
             # Verify file integrity
             video_file = os.path.join(save_path, f"{sanitized_title}.mp4")            
@@ -282,16 +315,19 @@ class VideoDownloader:
                 logging.error("Downloaded file not found.")
                 return False
             
-            # Get subtitle paths
-            subtitle_files = glob.glob(os.path.join(save_path, f"{glob.escape(sanitized_title)}.*.ass"))
-            logging.info(f"Subtitles found: {subtitle_files}")
-
+            if self.DOWNLOAD_SUBTITLES:
+                # Get subtitle paths
+                subtitle_files = glob.glob(os.path.join(save_path, f"{glob.escape(sanitized_title)}.*.ass"))
+                logging.info(f"Subtitles found: {subtitle_files}")
+            else:
+                subtitle_files = None
+            
             # Re-encode video and embed subtitles
             temp_output_file = os.path.join(save_path, f"{sanitized_title}_with_subs.mp4")
             if not self.reencode_video(video_file, temp_output_file, subtitle_files):
                 logging.error("Failed to re-encode video with subtitles.")
                 return False
-            
+        
             time.sleep(1) # give some time to process (optional can be removed if not created issues)
             
             # Check if the re-encoded file exists
@@ -303,11 +339,12 @@ class VideoDownloader:
             os.remove(video_file)
             final_output_file = os.path.join(save_path, f"{video_title}.mp4")
             
-             # Clean up leftover subtitle files
-            for sub_file in subtitle_files:
-                if os.path.exists(sub_file):
-                    os.remove(sub_file)
-                    logging.info(f"Deleted leftover subtitle file: {sub_file}")
+            if self.DOWNLOAD_SUBTITLES and not self.GET_SUBTITLE_LEFTOVER:
+                # Clean up leftover subtitle files
+                for sub_file in subtitle_files:
+                    if os.path.exists(sub_file):
+                        os.remove(sub_file)
+                        logging.info(f"Deleted leftover subtitle file: {sub_file}")
             
             # Attempt to keep the original name (sometime won't work due to Window special character restriction)
             try:
@@ -377,13 +414,13 @@ class VideoDownloader:
                         logging.info(f"\nDownloading video {idx}/{len(video_urls)}: {video_title}")
                         success = self.download_video(url, save_dir)
                         
-                        if not success:
+                        if self.DOWNLOAD_SUBTITLES and not success:
                             self.cleanup_subtitles(save_dir, video_title)
                             logging.error(f"Failed to download video {idx}. Continuing with the next one...")  
                 else:
                     # Single video download
                     success = self.download_video(video_url, save_dir)
-                    if not success:
+                    if self.DOWNLOAD_SUBTITLES and not success:
                         with YoutubeDL({'quiet': True}) as ydl:
                             info = ydl.extract_info(video_url, download=False)
                             video_title = info.get('title', 'Unknown')
@@ -406,3 +443,4 @@ if __name__ == "__main__":
     except Exception as e:
         logging.error(f"\nFatal error: {str(e)}")
         exit(1)
+
