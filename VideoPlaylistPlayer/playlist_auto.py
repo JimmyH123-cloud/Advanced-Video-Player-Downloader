@@ -3,14 +3,13 @@ from tkinter import ttk, filedialog, messagebox
 import os
 import vlc
 import random
-import traceback
 from pathlib import Path
 import cv2
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 from functools import lru_cache
 import ast
 import time
-
+import sys
 
 class VideoPlayer:
     
@@ -27,7 +26,6 @@ class VideoPlayer:
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
 
-        
         self.window_width = int(screen_width * 0.7) # Set the initial window size to 70% of the screen size 
         self.window_height = int(self.window_width / (16 / 9))  # Maintain 16:9 aspect ratio
 
@@ -44,49 +42,42 @@ class VideoPlayer:
             
         self.root.geometry(f"{self.window_width * 0.5714:.0f}x{screen_height - 100}") # scale up to 40% of window width
         
-        instance_args = [
+        vlc_args = [
             '--quiet', # Reduce logging
             '--no-disable-screensaver',
-            '--no-video-title-show',
+            '--no-video-title-show', 
         ]
         
         # Initialize VLC instance and media player
-        self.instance = vlc.Instance(instance_args)
+        self.instance = vlc.Instance(vlc_args)
         
         self.player = self.instance.media_player_new()
-
+        
         # Initialize playlist attributes
         self.playlist = []
         self.is_playing = False # For toggle play/pause logic
-        self.is_shuffle = False # For toggle random/stactic next video logic
+        self.is_shuffle = True # For toggle random/static next video logic
         self.playback_speed = 1.0
+        self.previous_index = 0
         self.watched_videos = set() 
         
         self.last_hover_time = 0
-        self.hover_cooldown = 0.1  # 10ms cooldown between hover events to reduce `computationnal comsuption`.
+        self.hover_cooldown = 0.1  # 10ms cooldown between hover events to reduce `computational consumption`.
         
         # Try to use a default font
         try:
             self.font = ImageFont.truetype("arial.ttf", 16)
         except IOError:
             self.font = ImageFont.load_default()
-        
-        
+
         # Setup the user interface
         self.setup_ui()
         self.bind_keys()
-
+        
         # Bind close window event to stop playback
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-
-    def setup_ui(self):
         
-        # style = ttk.Style()
-        # style.configure('CustomFrame.TFrame', 
-        #                 background='white', 
-        #                 foreground='black', 
-        #                 borderwidth=1, 
-        #                 relief='solid')
+    def setup_ui(self):
         
         # Create main container frame
         self.main_container = ttk.Frame(self.root)
@@ -140,7 +131,7 @@ class VideoPlayer:
 
         ttk.Button(controls, text="RTWV", command=self.reset_watched_videos, width=6.5).pack(side=tk.LEFT, padx=2, pady=2)
 
-        self.shuffle_button = ttk.Button(controls, text="Shuffle Off", command=self.toggle_shuffle)
+        self.shuffle_button = ttk.Button(controls, text="Shuffle Off" if self.is_shuffle else "Shuffle On", command=self.toggle_shuffle)
         self.shuffle_button.pack(side=tk.LEFT, padx=4)
 
         self.volume_var = tk.IntVar(value=50)
@@ -170,6 +161,7 @@ class VideoPlayer:
         self.playlist_box.bind('<Double-Button-1>', self.play_selected)
         self.duration_slider.bind("<Button-1>", self.duration_bar_click)
         
+        # Menu bar
         menubar = tk.Menu(self.root) 
         
         filemenu = tk.Menu(menubar, tearoff=0)
@@ -191,11 +183,13 @@ class VideoPlayer:
 
     def load_folder(self):
         folder = filedialog.askdirectory()
-        if os.name == 'nt':
-                self.player.set_hwnd(self.video_frame.winfo_id())
+
+        if sys.platform.startswith("win"):
+            self.player.set_hwnd(self.video_frame.winfo_id())
         else:
+            print("[Warning] please use playlist_auto_linux_mac.py as this script might not be compatible with other operating system")
             self.player.set_xwindow(self.video_frame.winfo_id())
-        
+            
         if folder:
             self.playlist.clear()
             self.playlist_box.delete(0, tk.END)
@@ -226,9 +220,7 @@ class VideoPlayer:
             self.is_playing = True
             self.play_button.config(text="Pause")
             
-            time.sleep(0.5) # Give time to process subtitle parsing before running get_subtitle_tracks()
-            
-            self.subtitle_tracks = self.get_subtitle_tracks()
+            self.root.after(500, lambda: self._update_subtitle_tracks())
         
             # Update the playlist UI
             self.playlist_box.selection_clear(0, tk.END)
@@ -251,7 +243,10 @@ class VideoPlayer:
             {"=" * 55}
             """)
     
-    
+    def _update_subtitle_tracks(self):
+        """Update subtitle tracks list"""
+        self.subtitle_tracks = self.get_subtitle_tracks()
+        
     def toggle_play(self, event=None):
         if self.player.is_playing():
             self.player.pause()
@@ -293,7 +288,7 @@ class VideoPlayer:
 
     def toggle_shuffle(self):
         self.is_shuffle = not self.is_shuffle ## apply "not" and change the boolean value
-        self.shuffle_button.config(text="Shuffle On" if self.is_shuffle else "Shuffle Off")
+        self.shuffle_button.config(text="Shuffle Off" if self.is_shuffle else "Shuffle On")
         
 
     def on_closing(self):
@@ -329,7 +324,7 @@ class VideoPlayer:
 
     def reset_watched_videos(self):
         self.watched_videos.clear()
-        print(f"{"The Watched Videos Tracker has been reset!".upper()} \n{"you can proceed.".upper()}")
+        print(f"{'The Watched Videos Tracker has been reset!'.upper()} \n{'you can proceed.'.upper()}")
     
    
     def on_duration_change(self, value):
@@ -401,11 +396,7 @@ class VideoPlayer:
                     mouse_x = self.root.winfo_pointerx()
                     relative_mouse_x = mouse_x - self.root.winfo_rootx()
 
-                    self.PREVIEW_WIDTH = 200
-                    self.PREVIEW_HEIGHT = 120
-
                     preview_x = relative_mouse_x - (self.PREVIEW_WIDTH // 2)
-
                     slider_y_relative_to_root = self.duration_slider.winfo_rooty() - self.root.winfo_rooty()
                     preview_y = slider_y_relative_to_root - self.PREVIEW_HEIGHT - 10
                     
@@ -416,7 +407,6 @@ class VideoPlayer:
                     self.preview_image_label.lift()
         except Exception as e:
             print(f"Preview error: {e}")
-            traceback.print_exc()
             
         self.last_hover_time = current_time
     
@@ -446,9 +436,7 @@ class VideoPlayer:
                 cap.release()
     
     def create_preview_composite(self, preview_image, timestamp_text):
-        """Create a composite image with preview and timestamp.
-        AkA the most consuming thing
-        """
+        """Create a composite image with preview and timestamp. very consuming thing"""
         # Create a new image with a dark background
         composite = Image.new('RGB', (200, 120), color=(0, 0, 0))
         
@@ -476,22 +464,22 @@ class VideoPlayer:
         "Hide the preview image label"
         self.preview_image_label.place_forget()
 
-    def on_resize(self, event):
-        frame_width = event.width
-        frame_height = event.height
+    # def on_resize(self, event):
+    #     frame_width = event.width
+    #     frame_height = event.height
 
-        aspect_ratio = 16 / 9
-        new_height= frame_height
-        new_width = int(frame_height / aspect_ratio)
+    #     aspect_ratio = 16 / 9
+    #     new_height= frame_height
+    #     new_width = int(frame_height / aspect_ratio)
 
-        if new_height > frame_height:
-            new_height = frame_width
-            new_width = int(frame_width * aspect_ratio)
+    #     if new_height > frame_height:
+    #         new_height = frame_width
+    #         new_width = int(frame_width * aspect_ratio)
 
-        new_width = max(new_width, 400)
-        new_height = max(new_height, 225)
+    #     new_width = max(new_width, 400)
+    #     new_height = max(new_height, 225)
 
-        self.video_frame.config(width=new_width, height=new_height)
+    #     self.video_frame.config(width=new_width, height=new_height)
 
         
     def bind_keys(self):
@@ -536,7 +524,7 @@ class VideoPlayer:
     
     # Get a list of available subtitle tracks.
     def get_subtitle_tracks(self):
-        
+        """Get a list of available subtitle tracks"""
         tracks = []
         spu_count = self.player.video_get_spu_count()
         print(f"Total subtitle tracks: {spu_count}")
@@ -557,7 +545,7 @@ class VideoPlayer:
     
     # Enable the first available subtitle track.
     def enable_subtitles(self):
-        
+        """Enable the first available subtitle track"""
         if self.subtitle_tracks:
             self.player.video_set_spu(self.subtitle_tracks[0][0])  # Enable the first track
             print(f"Subtitles enabled: {self.subtitle_tracks[0][1]}")
@@ -566,14 +554,14 @@ class VideoPlayer:
 
     # Disable subtitles.
     def disable_subtitles(self):
-        
+        """Disable subtitles"""
         if self.player:
             self.player.video_set_spu(-1)  # Disable subtitles
             print("Subtitles disabled.")
     
     # Open a dialog to let the user select a subtitle track.
     def select_subtitle_track(self):
-        
+        """Open a dialog to select a subtitle track"""
         if not self.subtitle_tracks:
             messagebox.showinfo("No Subtitles", "No subtitle tracks available.")
             return
@@ -609,6 +597,7 @@ class VideoPlayer:
         tk.Button(track_dialog, text="Select", command=on_select).pack(pady=10)
     
     def load_previous_tracked(self): # Separate function for loading logic
+        """Load watched videos from file"""
         if not self.playlist:
             return
 
@@ -653,6 +642,7 @@ class VideoPlayer:
             messagebox.showerror("Error", f"Error loading tracked videos: {e}")
     
     def save_watched_videos(self): 
+        """Save watched videos to file"""
         filepath = Path("watched_videos.txt")
         try:
             with open(filepath, "w") as f:
@@ -722,3 +712,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = VideoPlayer(root)
     root.mainloop()
+
