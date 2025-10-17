@@ -50,15 +50,19 @@ Pillow
 python 3.x
 yt-dlp
 tkinter (included with Python)
-ffmpeg (must be installed and accessible. Needed to be install at path: C:\)
+ffmpeg (must be installed and accessible)
 ```
 
 ## 🛠️ Installation
 
+**First, clone the repository:**
+```bash
+git clone [https://github.com/JimmyH123-cloud/Advanced-Video-Player-Downloader.git](https://github.com/JimmyH123-cloud/Advanced-Video-Player-Downloader.git)
+cd Advanced-Video-Player-Downloader
+```
+
 ### Video Playlist Player
 ```bash
-# Clone the repository
-git clone https://github.com/jimmyH123-cloud/VideoPlaylistPlayer.git
 
 # Install dependencies
 pip install python-vlc
@@ -66,56 +70,107 @@ pip install opencv-python
 pip install Pillow
 
 # VLC Media Player (Required)
-# Download and install VLC Media Player from [https://www.videolan.org/vlc/](https://www.videolan.org/vlc/). Ensure you install the 64-bit version if you are using a 64-bit operating system.
+```
 
-# Launch the application
-python video_playlist_player.py
+#### Platform-Specific VLC Installation (Required)
+**Windows:** Download and install the 64-bit version from https://www.videolan.org/vlc/.
+
+**Linux (Debian/Ubuntu):** Install both the player and the library headers:
+
+```bash
+sudo apt update
+sudo apt install vlc libvlc-dev
+```
+**macOS:** Install via Homebrew:
+
+```bash
+brew install vlc
 ```
 
 ### Video Downloader
-```bash
-# Clone the repository
-git clone https://github.com/jimmyH123-cloud/VideoDownloader.git
 
+```bash
 # Install dependencies
 pip install yt-dlp
-
-## Install External Dependencies
-# ffmpeg (Required for H.265/HEVC / H.264/AVC)
-# This is essential. Follow these steps:
-
-# 1. Download ffmpeg:
-#    * Go to [https://www.gyan.dev/ffmpeg/builds/] or [https://www.ffmpeg.org/download.html] and find the gyan.dev build.
-#    * Look for the latest "Essentials" or "Release" builds. Choose the correct version for your operating system (Windows 64-bit is most common). It will be a .zip file.
-#    * Download the .zip or 7z file.
-
-# 2. Extract ffmpeg:
-#    * Extract the *contents* of the downloaded .zip file directly in your C: drive (C:\ffmpeg). This is the recommended location for simplicity.
-#    * Rename the folder ffmpeg-..-.. to ffmpeg.
-#    * You should now have a folder structure like C:\ffmpeg\bin, C:\ffmpeg\doc, etc. 
-# And if it doesn't print "... - ERROR - FFmpeg not found at C:\ffmpeg\bin\ffmpeg.exe" after launching the script then it should work
-
-
-# Launch the application
-python video_downloader.py
 ```
+
+
+#### ⚙️ FFmpeg Installation (Required for Video Conversion and Subtitles)
+
+`ffmpeg` is mandatory for video conversion (H.265/H.264) and subtitle embedding. The program automatically detects it if it’s available in your system **PATH** or through the environment variable `FFMPEG_PATH`.
+
+##### Option 1 – Recommended (Install via Package Manager or Add to PATH)
+
+1.  **Installation Commands:**
+
+      * **Windows:**
+        1.  Download the build from [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/).
+        2.  Extract the archive (e.g., to `C:\ffmpeg`). Ensure `ffmpeg.exe` is in the `C:\ffmpeg\bin` directory.
+        3.  **Add `C:\ffmpeg\bin` to your System PATH** Environment Variables (Press `Win + R`, type `sysdm.cpl`, go to **Advanced → Environment Variables**).
+      * **Linux (Debian/Ubuntu):**
+        ```bash
+        sudo apt install ffmpeg
+        ```
+      * **macOS (Homebrew):**
+        ```bash
+        brew install ffmpeg
+        ```
+      
+
+2.  **Verify Installation:**
+    Open a **new** terminal window and run:
+
+    ```bash
+    ffmpeg -version
+    ```
+
+    If this prints version info, it’s correctly configured.
+
+##### Option 2 – Environment Variable (Custom Location)
+
+If you cannot modify the system PATH or does not want to, you can set the `FFMPEG_PATH` environment variable to the exact location of the executable.
+
+```bash
+# Windows PowerShell
+setx FFMPEG_PATH "C:\custom\path\to\ffmpeg.exe"
+
+# Linux/macOS (add to your shell profile, e.g., .bashrc, .zshrc)
+export FFMPEG_PATH="/usr/local/bin/ffmpeg"
+```
+
+The application will automatically detect this custom path.
+
 
 ## 📖 Usage Guide
 
 ### Video Playlist Player
-1. Launch the application and click **Select Folder**
-2. Choose a directory containing `.mp4` files
-3. Use the intuitive controls for playback
-4. Adjust speed using slider or keyboard shortcuts
-5. Toggle shuffle mode for random playback
-6. Reset watched videos with **RTWV** button
-7.  **Persistent Watched Video Tracking:**
+
+<details>
+
+<summary>Usage of Video Playlist Player</summary>
+
+1. Launch the application using the appropriate script for your OS:
+   ```bash 
+   # For Windows
+   python video_playlist_player.py
+
+   # For Linux / macOS (Includes logic for platform-specific video frame handling) and (WSL Excluded)
+   python video_playlist_player_linux_mac.py
+   ```
+2. and click **Select Folder**
+3. Choose a directory containing `.mp4` files
+4. Use the intuitive controls for playback
+5. Adjust speed using slider or keyboard shortcuts
+6. Toggle shuffle mode for random playback
+7. Reset watched videos with **RTWV** button
+8.  **Persistent Watched Video Tracking:**
     *   Pressing `<p>` will save the currently tracked watched videos to a file (`watched_videos.txt`) in the same directory as the script. This allows you to resume your progress in future sessions.
     *   Pausing the video will *not* automatically save the watched videos. You must use the `<p>` key or the "Save Watched Videos" menu option to save your progress.
     *   When the application starts, you can choose to load previously tracked videos using the "Load Watched Videos" menu option.
     *   **Handling Different Playlists:** If you load watched video data from a previous session and some of the tracked videos are *not* present in the current playlist, a warning message will be displayed, and those invalid entries will be ignored. Only the valid entries for the current playlist will be loaded.
-8. **Merged Subtitle Support:** If your videos have merged subtitles (e.g., embedded within the video file), the player will detect them and allow you to select which track to display. You can select them from the menu option
+9.  **Merged Subtitle Support:** If your videos have merged subtitles (e.g., embedded within the video file), the player will detect them and allow you to select which track to display. You can select them from the menu option
 
+</details>
 
 #### Keyboard Shortcuts
 | Key | Action |
@@ -128,6 +183,10 @@ python video_downloader.py
 
 ### Video Downloader
 1. Launch the application
+   ```bash
+   # Window, Linux Or MacOS
+   python video_downloader.py
+   ```
 2. Paste your video URL
 3. Select the output directory.
 4. Select Video Quality: Choose your desired video quality.
@@ -158,7 +217,7 @@ DOWNLOAD_SUBTITLES = True      # Set True/False
 
 ## 🐛 Known Issues
 - After watching all videos, use **RTWV** (Reset Tracked Watched Videos) and press **Next** or **Play/Pause** to restart playback
-- **Video Downloader:** The downloading proccessing may take severals minutes depending on the file size, `resolution` (1080p, 4K), `codec` used to convert, `subtitle merging` and `internet speed`. (If the terminal is freezing for a while, it mean that it's proccessing. )
+- **Video Downloader:** The downloading processing may take severals minutes depending on the file size, `resolution` (1080p, 4K), `codec` used to convert, `subtitle merging` and `internet speed`. (If the terminal is freezing for a while, it mean that it's processing. )
  
 
 ## 📄 License
@@ -166,3 +225,4 @@ This project is MIT licensed - see the [LICENSE](LICENSE) file for details
 
 ## 📬 Contact
 Project Link: [https://github.com/jimmyH123-cloud/VideoToolsHub](https://github.com/jimmyH123-cloud/VideoToolsHub)
+
