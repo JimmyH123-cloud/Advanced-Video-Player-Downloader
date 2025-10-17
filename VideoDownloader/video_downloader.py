@@ -7,6 +7,8 @@ import logging
 from collections import defaultdict
 import subprocess
 import time
+import shutil
+import errno
 # from yt_dlp.networking.impersonate import ImpersonateTarget
 
 # basic log
@@ -15,19 +17,28 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class VideoDownloader:
     # SETTINGS, can be configure freely
     
-    GET_SUBTITLE_LEFTOVER = False # Set True/False | Option to keep the subtitle as file, if the user want to modify the subtitle or use it later.
-    
-    # COOKIES_NAME = 'cookies.txt' # Not needed until issues appear. Option to use youtube_cookies in case if yt anti bot detect.
-    
-    DOWNLOAD_SUBTITLES = True # Set True/False | Option to download the subtitle, if True, cautious as HTTP Error 429 might happen with Youtube if the specific subtitle is not available in the video
-    
-    
+    # Defaults
+    # Controls whether subtitle files leftover after embedding are kept.
+    GET_SUBTITLE_LEFTOVER = False  # Set True/False
+
+    # Optional cookies file (not required by default).
+    # Use only if you hit anti-bot detection; contains session tokens.
+    # COOKIES_NAME = 'cookies.txt'  # Uncomment to enable
+
+    # Controls whether the downloader requests subtitles via yt-dlp.
+    # If True, yt-dlp will attempt to download subtitles (may trigger HTTP 429).
+    DOWNLOAD_SUBTITLES = True      # Set True/False
     
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()
-        self.ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe' # You need to install ffmpeg at C: otherwise it won't found the ffmpeg
-        
+        # Attempt to Check for the user-set environment variable or Search the system's PATH
+        self.ffmpeg_path = os.getenv("FFMPEG_PATH") or shutil.which("ffmpeg")
+
+        # fallback to Window specific location 
+        if not self.ffmpeg_path:
+            self.ffmpeg_path = r'C:\ffmpeg\bin\ffmpeg.exe'
+            
         # Verify FFmpeg installation
         if not os.path.exists(self.ffmpeg_path):
             logging.error(f"FFmpeg not found at {self.ffmpeg_path}")
@@ -190,7 +201,7 @@ class VideoDownloader:
                 '-map', '0:a',   # Map audio stream from input 0
                 '-threads', '2',  # Limit threads to reduce CPU load
                 '-preset', 'medium ',  # Use the (x) preset
-                '-map_metadata', '-1',  # Skip writing metadata: title,creation_date,etc..
+                '-map_metadata', '0',  # writing metadata: title,creation_date,etc..
             ])
 
             # Map subtitles if available
@@ -350,8 +361,17 @@ class VideoDownloader:
             try:
                 os.rename(temp_output_file, final_output_file)
                 print(f"'{os.path.basename(temp_output_file)}' was rename to '{os.path.basename(final_output_file)}'")
-            except WindowsError as e:
-                logging.error(f"Error renaming video title.")
+            except OSError as e: # This is the best practice!
+                # Check for specific error numbers if necessary, like file not found (ENOENT)
+                if e.errno == errno.EACCES: # Permission denied error
+                    error_message = "Permission denied while renaming."
+                elif e.errno == errno.ENOENT: # File not found error
+                    error_message = "One of the files was not found."
+                else:
+                    # Generic OSError handling
+                    error_message = f"OS Error renaming video: {e}"
+
+                logging.error(f"Error renaming video title. {error_message}")
             
             return True
 
@@ -378,7 +398,7 @@ class VideoDownloader:
                 if video_url.lower() == 'q':
                     break
                 
-                save_dir = filedialog.askdirectory(title="Select Download Location")
+                save_dir = filedialog.askdirectory(title="Select Download Location", parent=self.root)
                 if not save_dir:
                     logging.error("Error: No directory selected")
                     continue
@@ -443,4 +463,5 @@ if __name__ == "__main__":
     except Exception as e:
         logging.error(f"\nFatal error: {str(e)}")
         exit(1)
+
 
